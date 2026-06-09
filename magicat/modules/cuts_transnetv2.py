@@ -32,8 +32,13 @@ class TransNetV2Detector:
         scenes = model.predictions_to_scenes(single_frame_pred)  # frame spans
 
         shots = []
+        prev_end = 0.0
         for i, (f_start, f_end) in enumerate(scenes):
-            start, end = f_start / fps, (f_end + 1) / fps
+            # chain starts to the previous end so the timeline never has
+            # micro-gaps at non-integer frame rates (e.g. 23.976 fps)
+            start = prev_end if i else round(f_start / fps, 3)
+            end = round((f_end + 1) / fps, 3)
+            prev_end = end
             shot_id = f"shot_{i:03d}"
             keyframes = []
             for label, t in (("a", start), ("b", (start + end) / 2),
@@ -42,7 +47,7 @@ class TransNetV2Detector:
                 extract_keyframe(video, t, kf)
                 keyframes.append(str(kf))
             shots.append({
-                "id": shot_id, "start": round(start, 3), "end": round(end, 3),
+                "id": shot_id, "start": start, "end": end,
                 "keyframes": keyframes, "confidence": 1.0,
             })
         return {"shots": shots, "layers_status": {"shots": "ok"}}
