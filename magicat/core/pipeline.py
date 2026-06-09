@@ -28,6 +28,7 @@ EXPORTERS = ["preview_mp4"]            # M3+: premiere_resolve_zip
 def load_builtin_modules() -> None:
     """Import modules for their @register side effects."""
     import magicat.modules.cuts_pyscenedetect  # noqa: F401
+    import magicat.modules.cuts_transnetv2  # noqa: F401
     import magicat.modules.ingest  # noqa: F401
     import magicat.modules.render_preview  # noqa: F401
 

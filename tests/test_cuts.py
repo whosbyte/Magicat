@@ -95,3 +95,13 @@ def test_shots_cover_timeline_without_gaps(ingested):
     assert shots[0]["start"] == 0.0
     for prev, nxt in zip(shots, shots[1:]):
         assert prev["end"] == nxt["start"]
+
+
+def test_transnetv2_detects_three_shots(ingested):
+    pytest.importorskip(
+        "transnetv2_pytorch", reason="optional GPU extra not installed")
+    from magicat.modules.cuts_transnetv2 import TransNetV2Detector
+    m, ws = ingested
+    patch = TransNetV2Detector().run(m, ws)
+    assert len(patch["shots"]) == 3
+    assert abs(patch["shots"][0]["end"] - 2.0) <= 0.1
