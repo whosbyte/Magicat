@@ -12,6 +12,11 @@ from magicat.core.pipeline import run_job
 app = typer.Typer(no_args_is_help=True)
 
 
+@app.callback()
+def main() -> None:
+    """Magicat: deconstruct short-form videos into editable layers."""
+
+
 @app.command()
 def run(
     input_arg: str = typer.Argument(..., metavar="URL_OR_FILE"),
@@ -34,16 +39,6 @@ def run(
     for export in manifest.exports:
         typer.echo(f"  export {export.format}: {export.artifact}")
     typer.echo(f"manifest: {workdir / 'manifest.json'}")
-
-
-@app.command(hidden=True)
-def version() -> None:
-    """Print the installed version."""
-    from importlib.metadata import version as _version, PackageNotFoundError
-    try:
-        typer.echo(_version("magicat"))
-    except PackageNotFoundError:
-        typer.echo("0.1.0-dev")
 
 
 if __name__ == "__main__":

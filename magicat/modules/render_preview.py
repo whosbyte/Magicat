@@ -42,7 +42,7 @@ class PreviewRenderer:
 
         concat_list = seg_dir / "list.txt"
         concat_list.write_text(
-            "".join(f"file '{s.as_posix()}'\n" for s in segments),
+            "".join(f"file '{s.resolve().as_posix()}'\n" for s in segments),
             encoding="ascii",
         )
         out = ws.exports_dir / "preview.mp4"

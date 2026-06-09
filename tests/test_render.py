@@ -1,4 +1,6 @@
 # tests/test_render.py
+from pathlib import Path
+
 from magicat.core.workspace import Workspace
 from magicat.manifest.patch import apply_patch
 from magicat.manifest.schema import Manifest, Source
@@ -20,6 +22,19 @@ def test_preview_renders_full_timeline(fixture_video, tmp_path):
     assert out.suffix == ".mp4"
     # all three shots present: duration matches the source
     assert abs(probe_duration(out) - (m.source.duration or 0)) < 0.3
+
+
+def test_preview_renders_with_relative_workdir(fixture_video, tmp_path,
+                                               monkeypatch):
+    # ffmpeg concat resolves list entries relative to the list file, so the
+    # exporter must write absolute paths even when the workdir is relative
+    monkeypatch.chdir(tmp_path)
+    ws = Workspace(Path("jobs") / "rel")
+    m = Manifest(job_id="j", source=Source(file=str(fixture_video)))
+    m = apply_patch(m, IngestAnalyzer().run(m, ws))
+    m = apply_patch(m, CutDetector().run(m, ws))
+    out = PreviewRenderer().export(m, ws)
+    assert out.is_file()
 
 
 def test_export_with_no_shots_raises(fixture_video, tmp_path):
