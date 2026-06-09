@@ -56,3 +56,42 @@ def test_uncut_video_yields_single_shot(fixture_video, tmp_path):
     patch = CutDetector().run(m, ws)
     assert len(patch["shots"]) == 1
     assert patch["shots"][0]["start"] == 0.0
+
+
+def test_flash_cut_shot_is_preserved(tmp_path):
+    # red 2s | green 0.3s | blue 2s -> the 0.3s flash cut must survive as a shot
+    import subprocess
+    from tests.conftest import run_ffmpeg
+    work = tmp_path / "build"
+    work.mkdir()
+    segs = []
+    for i, (color, dur) in enumerate([("red", 2), ("green", 0.3), ("blue", 2)]):
+        seg = work / f"seg{i}.mp4"
+        run_ffmpeg([
+            "-f", "lavfi", "-i", f"color=c={color}:s=320x640:r=30:d={dur}",
+            "-f", "lavfi", "-i", f"sine=frequency=440:duration={dur}",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-shortest", str(seg)])
+        segs.append(seg)
+    concat_list = work / "list.txt"
+    concat_list.write_text(
+        "".join(f"file '{s.as_posix()}'\n" for s in segs), encoding="ascii")
+    video = work / "flash.mp4"
+    run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(concat_list),
+                "-c", "copy", str(video)])
+
+    ws = Workspace(tmp_path / "job")
+    m = Manifest(job_id="j", source=Source(file=str(video)))
+    m = apply_patch(m, IngestAnalyzer().run(m, ws))
+    patch = CutDetector().run(m, ws)
+    shots = patch["shots"]
+    assert len(shots) == 3
+    assert 0.15 <= (shots[1]["end"] - shots[1]["start"]) <= 0.45
+
+
+def test_shots_cover_timeline_without_gaps(ingested):
+    m, ws = ingested
+    shots = CutDetector().run(m, ws)["shots"]
+    assert shots[0]["start"] == 0.0
+    for prev, nxt in zip(shots, shots[1:]):
+        assert prev["end"] == nxt["start"]

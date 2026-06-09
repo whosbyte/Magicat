@@ -32,14 +32,21 @@ class CutDetector:
     def run(self, manifest: Manifest, ws: Workspace) -> dict:
         video = Path(manifest.source.file)
         # start_in_scene=True: always returns >= 1 scene spanning the full video.
-        scenes = detect(str(video), ContentDetector(), start_in_scene=True)
-        # Filter out tail artefacts: re-encoding can produce a spurious micro-scene
-        # (< 0.5 s) at the very end of the clip.  Real shots are always >= 1 s.
-        MIN_SHOT_DURATION = 0.5
-        spans = [
-            (s.seconds, e.seconds) for s, e in scenes
-            if (e.seconds - s.seconds) >= MIN_SHOT_DURATION
-        ]
+        scenes = detect(str(video), ContentDetector(min_scene_len=3), start_in_scene=True)
+        # Encoder artefacts show up as micro-scenes (~2 frames). Merge anything
+        # shorter than MIN_SHOT_DURATION into its neighbour instead of dropping
+        # it, so the timeline always covers the full video — real flash cuts
+        # (>= 0.2 s) survive as their own shots.
+        MIN_SHOT_DURATION = 0.2
+        spans: list[tuple[float, float]] = []
+        for s, e in ((s.seconds, e.seconds) for s, e in scenes):
+            if spans and (e - s) < MIN_SHOT_DURATION:
+                spans[-1] = (spans[-1][0], e)      # absorb into previous shot
+            else:
+                spans.append((s, e))
+        if len(spans) > 1 and (spans[0][1] - spans[0][0]) < MIN_SHOT_DURATION:
+            spans[1] = (spans[0][0], spans[1][1])  # leading micro-scene: absorb forward
+            spans.pop(0)
         if not spans:
             spans = [(0.0, manifest.source.duration or 0.0)]
 
