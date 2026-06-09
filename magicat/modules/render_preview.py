@@ -23,13 +23,18 @@ class PreviewRenderer:
 
     def export(self, manifest: Manifest, ws: Workspace) -> Path:
         source = Path(manifest.source.file)
+        if not manifest.shots:
+            raise ValueError("no shots in manifest - nothing to render")
         seg_dir = ws.exports_dir / "preview_segments"
-        seg_dir.mkdir(exist_ok=True)
+        seg_dir.mkdir(parents=True, exist_ok=True)
 
         segments = []
         for shot in manifest.shots:
             seg = seg_dir / f"{shot.id}.mp4"
             # re-encode for frame-exact cuts (copy snaps to keyframes)
+            # NOTE: -ss/-to appear BEFORE -i (input seek): -to is then an
+            # absolute end time, so the segment spans [start, end]. Moving
+            # these after -i silently changes semantics - keep them input-side.
             _ffmpeg(["-ss", f"{shot.start:.3f}", "-to", f"{shot.end:.3f}",
                      "-i", str(source), "-c:v", "libx264",
                      "-pix_fmt", "yuv420p", "-c:a", "aac", str(seg)])
