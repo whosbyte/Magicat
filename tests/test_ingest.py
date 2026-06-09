@@ -41,3 +41,16 @@ def test_ingest_url_uses_downloader(fixture_video, tmp_path, monkeypatch):
     patch = analyzer.run(m, ws)
     assert patch["source"]["platform"] == "tiktok"
     assert Path(patch["source"]["file"]).is_file()
+
+
+def test_probe_rejects_audio_only(tmp_path):
+    import subprocess
+    import pytest
+    audio = tmp_path / "audio.m4a"
+    subprocess.run(
+        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+         "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+         "-vn", str(audio)],
+        check=True, capture_output=True)
+    with pytest.raises(ValueError, match="no video stream"):
+        probe(audio)

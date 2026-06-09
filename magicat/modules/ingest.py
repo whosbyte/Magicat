@@ -54,10 +54,12 @@ def probe(path: Path) -> dict:
         check=True, capture_output=True, text=True,
     ).stdout
     data = json.loads(out)
+    if not data["streams"]:
+        raise ValueError(f"no video stream in {path}")
     stream = data["streams"][0]
-    num, den = stream["r_frame_rate"].split("/")
+    num, den = (float(x) for x in stream["r_frame_rate"].split("/"))
     return {
-        "fps": float(num) / float(den),
+        "fps": num / den if den else 0.0,
         "resolution": f"{stream['width']}x{stream['height']}",
         "duration": float(data["format"]["duration"]),
     }
