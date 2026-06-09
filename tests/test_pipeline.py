@@ -34,3 +34,15 @@ def test_analyzer_failure_degrades_gracefully(fixture_video, tmp_path,
 def test_ingest_failure_is_fatal(tmp_path):
     with pytest.raises(Exception):
         run_job(str(tmp_path / "does_not_exist.mp4"), tmp_path / "job")
+
+
+def test_manifest_paths_are_absolute(fixture_video, tmp_path, monkeypatch):
+    from pathlib import Path
+    monkeypatch.chdir(tmp_path)
+    manifest = run_job(str(fixture_video), Path("jobs") / "rel")
+    assert Path(manifest.source.file).is_absolute()
+    for shot in manifest.shots:
+        for kf in shot.keyframes:
+            assert Path(kf).is_absolute()
+    for export in manifest.exports:
+        assert Path(export.artifact).is_absolute()

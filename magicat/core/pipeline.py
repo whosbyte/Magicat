@@ -35,7 +35,9 @@ def load_builtin_modules() -> None:
 
 def run_job(input_arg: str, workdir: Path) -> Manifest:
     load_builtin_modules()
-    ws = Workspace(workdir)
+    # resolve so every path persisted into the manifest is absolute - the
+    # manifest outlives the process and may be loaded from a different cwd
+    ws = Workspace(Path(workdir).resolve())
 
     if input_arg.startswith(("http://", "https://")):
         source = Source(url=input_arg)
