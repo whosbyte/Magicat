@@ -9,6 +9,7 @@ without schema changes.
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -61,7 +62,7 @@ class SongSegment(StrictModel):
 
 
 class Acquisition(StrictModel):
-    status: str = "skipped"          # acquired | failed | skipped
+    status: Literal["acquired", "failed", "skipped"] = "skipped"
     file: str | None = None
     license: str | None = None
     links: dict[str, str] = Field(default_factory=dict)
@@ -124,4 +125,4 @@ class Manifest(StrictModel):
     captions: Captions = Field(default_factory=Captions)
     layers_status: dict[str, LayerState] = Field(default_factory=dict)
     exports: list[Export] = Field(default_factory=list)
-    report: dict = Field(default_factory=dict)
+    report: dict[str, Any] = Field(default_factory=dict)

@@ -37,6 +37,7 @@ def test_manifest_json_round_trip():
     m2 = Manifest.model_validate(data)
     assert m2 == m
     assert data["layers_status"]["shots"] == "ok"
+    assert m.model_dump(mode="json")["layers_status"]["shots"] == "ok"
 
 
 def test_unknown_fields_rejected():
