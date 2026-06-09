@@ -54,3 +54,11 @@ def test_probe_rejects_audio_only(tmp_path):
         check=True, capture_output=True)
     with pytest.raises(ValueError, match="no video stream"):
         probe(audio)
+
+
+def test_ingest_missing_file_raises_clear_error(tmp_path):
+    import pytest
+    ws = Workspace(tmp_path / "job")
+    m = Manifest(job_id="j", source=Source(file=str(tmp_path / "nope.mp4")))
+    with pytest.raises(FileNotFoundError, match="input file not found"):
+        IngestAnalyzer().run(m, ws)

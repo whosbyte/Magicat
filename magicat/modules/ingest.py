@@ -78,6 +78,8 @@ class IngestAnalyzer:
             platform = detect_platform(src.url)
         elif src.file:
             raw = Path(src.file)
+            if not raw.is_file():
+                raise FileNotFoundError(f"input file not found: {raw}")
             platform = None
         else:
             raise ValueError("manifest.source needs url or file")
