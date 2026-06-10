@@ -2,20 +2,29 @@
 """Caption analysis: sample frames -> OCR -> cluster -> style (spec 6.5)."""
 from __future__ import annotations
 
+import logging
+import shutil
 from pathlib import Path
 
 from PIL import Image
+from PIL import Image as PILImage
 
 from magicat.core.registry import register_analyzer
 from magicat.core.workspace import Workspace
 from magicat.manifest.schema import Manifest
 from magicat.modules.captions.clustering import cluster_detections, estimate_fill
+from magicat.modules.captions.font_dirs import default_font_dirs
+from magicat.modules.captions.font_matcher import FontMatcher
 from magicat.modules.captions.ocr import RapidOcrEngine
 from magicat.modules.captions.sampling import sample_frames
+
+log = logging.getLogger(__name__)
 
 SAMPLE_FPS = 5.0
 
 CROP_MARGIN = 0.02   # normalized margin around the caption bbox
+
+MIN_FONT_SCORE = 0.05   # below this, the "match" is noise (blank crops)
 
 
 def save_crop(frame_path: Path, bbox, dest: Path) -> str:
@@ -27,6 +36,8 @@ def save_crop(frame_path: Path, bbox, dest: Path) -> str:
                max(0, int((y - CROP_MARGIN) * height)),
                min(width, int((x + w + CROP_MARGIN) * width)),
                min(height, int((y + h + CROP_MARGIN) * height)))
+        if box[2] <= box[0] or box[3] <= box[1]:
+            raise ValueError(f"degenerate caption bbox {bbox}")
         img.crop(box).save(dest)
     return str(dest)
 
@@ -37,6 +48,8 @@ class CaptionAnalyzer:
     layer = "captions"
     needs_gpu = False
     engine_factory = staticmethod(RapidOcrEngine)   # injectable for tests
+    matcher_factory = staticmethod(
+        lambda: FontMatcher.from_dirs(default_font_dirs()))  # injectable
 
     def run(self, manifest: Manifest, ws: Workspace) -> dict:
         engine = self.engine_factory()
@@ -61,18 +74,24 @@ class CaptionAnalyzer:
         if manifest.source.resolution:
             frame_height = int(manifest.source.resolution.split("x")[1])
         crops_dir = ws.media_dir / "caption_crops"
-        crops_dir.mkdir(parents=True, exist_ok=True)
+        if crops_dir.is_dir():
+            shutil.rmtree(crops_dir)   # re-runs must not leave stale crops
+        crops_dir.mkdir(parents=True)
         for i, seg in enumerate(segments):
             mid_t = (seg["t_start"] + seg["t_end"]) / 2
             frame = min(samples, key=lambda s: abs(s.t - mid_t))
             crop_times = {seg["t_start"], mid_t,
                           max(seg["t_start"], seg["t_end"] - 1.0 / SAMPLE_FPS)}
             seg["crops"] = []
-            for j, ct in enumerate(sorted(crop_times)):
-                src_frame = min(samples, key=lambda s: abs(s.t - ct))
-                seg["crops"].append(save_crop(
-                    src_frame.path, seg["bbox"],
-                    crops_dir / f"seg_{i:03d}_{j}.png"))
+            try:
+                for j, ct in enumerate(sorted(crop_times)):
+                    src_frame = min(samples, key=lambda s: abs(s.t - ct))
+                    seg["crops"].append(save_crop(
+                        src_frame.path, seg["bbox"],
+                        crops_dir / f"seg_{i:03d}_{j}.png"))
+            except Exception as exc:
+                log.warning("caption crop failed: %s", exc)
+                seg["crops"] = []
             x, _, w, h = seg["bbox"]
             center = x + w / 2
             if abs(center - 0.5) < 0.05:
@@ -84,6 +103,29 @@ class CaptionAnalyzer:
                 "size": round(h * frame_height, 1) if frame_height else None,
                 "alignment": alignment,
             }
+
+        # font identification per segment: render-and-compare the FIRST crop
+        # against the candidate fonts. Font failures must NEVER fail the
+        # captions layer, so anything that throws degrades to no candidates.
+        matcher = self.matcher_factory()
+        for seg in segments:
+            seg["style"]["font_family"] = None
+            seg["style"]["font_candidates"] = []
+            if not seg["crops"]:
+                continue
+            try:
+                with PILImage.open(seg["crops"][0]) as crop:
+                    result = matcher.identify(crop, seg["text"])
+            except Exception as exc:
+                log.warning("font identification failed: %s", exc)
+                continue
+            if result.score < MIN_FONT_SCORE:
+                continue   # blank/garbage crop: no candidates beat noise
+            seg["style"]["font_candidates"] = [
+                {"name": name, "confidence": round(score, 4)}
+                for name, score in result.ranked[:3]]
+            if result.confident:
+                seg["style"]["font_family"] = result.font_key
 
         return {
             "captions": {"segments": segments},
