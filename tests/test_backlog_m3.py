@@ -134,6 +134,7 @@ def test_sanitize_query():
     assert sanitize_query('Artist: "Title"') == "Artist Title"
     assert sanitize_query("A;B|C&D") == "A B C D"
     assert sanitize_query("  plain  text  ") == "plain text"
+    assert sanitize_query("Don't Stop Believin'") == "Don't Stop Believin'"
 
 
 def test_unknown_duration_rejects_absurdly_long_candidate():
@@ -159,3 +160,16 @@ def test_cli_default_workdir_is_per_job(fixture_video, tmp_path,
     assert r1.exit_code == 0 and r2.exit_code == 0
     jobs = list((tmp_path / "jobs").iterdir())
     assert len(jobs) == 2          # one fresh directory per job, no reuse
+
+
+def test_cli_job_dir_matches_manifest_job_id(fixture_video, tmp_path,
+                                             monkeypatch):
+    import json
+    from typer.testing import CliRunner
+    from magicat.cli import app
+    monkeypatch.chdir(tmp_path)
+    runner = CliRunner()
+    assert runner.invoke(app, ["run", str(fixture_video)]).exit_code == 0
+    job_dir = next((tmp_path / "jobs").iterdir())
+    manifest = json.loads((job_dir / "manifest.json").read_text("utf-8"))
+    assert manifest["job_id"].startswith(job_dir.name)

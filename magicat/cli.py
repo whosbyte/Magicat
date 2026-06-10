@@ -26,9 +26,12 @@ def run(
     """Deconstruct a short-form video into a layered project."""
     logging.basicConfig(level=logging.INFO)
     if workdir is None:
-        workdir = Path("jobs") / uuid.uuid4().hex[:12]   # fresh dir per job
+        job_id = uuid.uuid4().hex
+        workdir = Path("jobs") / job_id[:12]   # dir name = id prefix
+    else:
+        job_id = None                          # explicit dir: run_job names the job
     try:
-        manifest = run_job(input_arg, workdir)
+        manifest = run_job(input_arg, workdir, job_id=job_id)
     except Exception as exc:  # ingest failure is fatal (spec section 5)
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1)

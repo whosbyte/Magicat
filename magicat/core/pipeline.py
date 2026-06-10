@@ -33,7 +33,8 @@ def load_builtin_modules() -> None:
     import magicat.modules.render_preview  # noqa: F401
 
 
-def run_job(input_arg: str, workdir: Path) -> Manifest:
+def run_job(input_arg: str, workdir: Path,
+            job_id: str | None = None) -> Manifest:
     load_builtin_modules()
     # resolve so every path persisted into the manifest is absolute - the
     # manifest outlives the process and may be loaded from a different cwd
@@ -43,7 +44,7 @@ def run_job(input_arg: str, workdir: Path) -> Manifest:
         source = Source(url=input_arg)
     else:
         source = Source(file=str(Path(input_arg).resolve()))
-    manifest = Manifest(job_id=uuid.uuid4().hex, source=source)
+    manifest = Manifest(job_id=job_id or uuid.uuid4().hex, source=source)
 
     # ingest is fatal on failure
     manifest = apply_patch(manifest, registry.get_analyzer("ingest")

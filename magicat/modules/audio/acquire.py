@@ -32,8 +32,12 @@ MAX_CANDIDATE_DURATION_S = 1800.0   # reject obvious loops/compilations
 
 
 def sanitize_query(text: str) -> str:
-    """Strip characters that confuse yt-dlp search-prefix parsing."""
-    return re.sub(r"\s+", " ", re.sub(r'[:;|&"\']', " ", text)).strip()
+    """Strip characters that confuse yt-dlp search-prefix parsing.
+
+    Apostrophes stay - they are common in titles and harmless (no shell;
+    only ':' is meaningful to the search prefix).
+    """
+    return re.sub(r"\s+", " ", re.sub(r'[:;|&"]', " ", text)).strip()
 
 
 class Candidate(BaseModel):
