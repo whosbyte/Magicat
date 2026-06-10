@@ -81,6 +81,14 @@ async function finish(jobId, state) {
   html += captions.count
     ? `<p>${captions.count} caption(s), font: ${esc((captions.fonts || []).join(", ") || "uncertain")}</p>`
     : "<p>No captions.</p>";
+  const sources = report.sources || {};
+  if (sources.searched && (sources.shots || []).length) {
+    const links = sources.shots.flatMap((s) => s.candidates || [])
+      .slice(0, 5)
+      .map((c) => `<a href="${esc(c.url)}" target="_blank">${esc(c.title || c.url)}</a>`)
+      .join(" · ");
+    html += `<p>Source candidates: ${links}</p>`;
+  }
   document.getElementById("summary").innerHTML = html;
   document.getElementById("downloads").innerHTML =
     `<a href="/api/jobs/${jobId}/artifacts/preview.mp4" download>Preview MP4</a>

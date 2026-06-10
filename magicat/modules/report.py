@@ -51,6 +51,15 @@ def build_report(manifest: Manifest) -> dict[str, Any]:
                 for seg in manifest.captions.segments],
             "transcript": [seg.text for seg in manifest.captions.segments],
         },
+        "sources": {
+            "searched": bool(manifest.source_matches),
+            "shots": [{
+                "shot_id": sm.shot_id,
+                "candidates": [{
+                    "url": c.url, "title": c.title, "score": c.score,
+                } for c in sm.candidates],
+            } for sm in manifest.source_matches],
+        },
         "layers": {k: v.value for k, v in manifest.layers_status.items()},
     }
 
@@ -71,6 +80,7 @@ td,th{text-align:left;padding:.3rem .6rem;border-bottom:1px solid #eee}
 &middot; $resolution</p>
 <h2>Scenes</h2><p>$shot_count shots detected.</p>
 <h2>Music</h2>$music_html
+<h2>Source footage</h2>$sources_html
 <h2>Captions</h2>$captions_html
 <h2>Layer status</h2><table>$layers_rows</table>
 </body></html>
@@ -108,6 +118,22 @@ def _render_html(report: dict[str, Any]) -> str:
     else:
         captions_html = "<p>No captions detected.</p>"
 
+    sources = report["sources"]
+    if sources["searched"]:
+        rows = []
+        for shot in sources["shots"]:
+            links = " ".join(
+                f'<a class="tag" href="{_esc(c["url"])}">'
+                f'{_esc(c["title"] or c["url"])}</a>'
+                for c in shot["candidates"]
+                if str(c["url"]).lower().startswith(("http://", "https://")))
+            rows.append(f"<tr><td>{_esc(shot['shot_id'])}</td>"
+                        f"<td>{links or '-'}</td></tr>")
+        sources_html = f"<table>{''.join(rows)}</table>"
+    else:
+        sources_html = ("<p>No source search performed (configure a "
+                        "reverse-search provider key).</p>")
+
     layers_rows = "".join(
         f"<tr><td>{_esc(layer)}</td><td>{_esc(state)}</td></tr>"
         for layer, state in report["layers"].items())
@@ -119,6 +145,7 @@ def _render_html(report: dict[str, Any]) -> str:
         resolution=_esc(report["source"]["resolution"]),
         shot_count=report["shots"]["count"],
         music_html=music_html,
+        sources_html=sources_html,
         captions_html=captions_html,
         layers_rows=layers_rows,
     )
