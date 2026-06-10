@@ -7,6 +7,10 @@ position in the recognized song where the submitted clip plays.
 """
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import time
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -93,6 +97,87 @@ class AudDProvider:
             artist=result["artist"],
             song_offset_s=song_offset_s,
             provider=self.name,
+            provider_ids=provider_ids,
+            links=links,
+        )
+
+
+class ACRCloudProvider:
+    """Raw HTTP + HMAC-SHA1 signing (docs.acrcloud.com identification-api).
+
+    The official pyacrcloud wheel does not exist for Windows, and the signing
+    protocol is ~15 lines of stdlib - so no SDK.
+    """
+
+    name = "acrcloud"
+
+    def __init__(self, host: str, access_key: str, access_secret: str) -> None:
+        self.host = host
+        self.access_key = access_key
+        self.access_secret = access_secret
+
+    def _string_to_sign(self, timestamp: str) -> str:
+        return "\n".join(["POST", "/v1/identify", self.access_key,
+                          "audio", "1", timestamp])
+
+    def _signature(self, timestamp: str) -> str:
+        digest = hmac.new(
+            self.access_secret.encode("ascii"),
+            self._string_to_sign(timestamp).encode("ascii"),
+            digestmod=hashlib.sha1,
+        ).digest()
+        return base64.b64encode(digest).decode("ascii")
+
+    def identify(self, clip: Path) -> SongMatch | None:
+        timestamp = str(int(time.time()))
+        sample = clip.read_bytes()
+        resp = requests.post(
+            f"https://{self.host}/v1/identify",
+            files={"sample": (clip.name, sample, "audio/wav")},
+            data={
+                "access_key": self.access_key,
+                "sample_bytes": str(len(sample)),
+                "timestamp": timestamp,
+                "signature": self._signature(timestamp),
+                "data_type": "audio",
+                "signature_version": "1",
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        code = data["status"]["code"]
+        if code == 1001:
+            return None
+        if code != 0:
+            raise ProviderError(
+                f"ACRCloud error {code}: {data['status']['msg']}")
+
+        best = data["metadata"]["music"][0]   # best match first
+        offset_s = max(0.0, (best["db_begin_time_offset_ms"]
+                              - best["sample_begin_time_offset_ms"]) / 1000.0)
+
+        provider_ids: dict[str, str] = {}
+        links: dict[str, str] = {}
+        isrc = best.get("external_ids", {}).get("isrc")
+        if isrc:
+            provider_ids["isrc"] = isrc
+        spotify_id = (best.get("external_metadata", {})
+                      .get("spotify", {}).get("track", {}).get("id"))
+        if spotify_id:
+            provider_ids["spotify"] = spotify_id
+            links["spotify"] = f"https://open.spotify.com/track/{spotify_id}"
+        if best.get("acrid"):
+            provider_ids["acrcloud"] = best["acrid"]
+
+        duration_ms = best.get("duration_ms")
+        return SongMatch(
+            title=best["title"],
+            artist=", ".join(a["name"] for a in best.get("artists", [])),
+            song_offset_s=offset_s,
+            provider=self.name,
+            score=float(best.get("score", 0)),
+            duration_s=duration_ms / 1000.0 if duration_ms else None,
             provider_ids=provider_ids,
             links=links,
         )
