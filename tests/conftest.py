@@ -46,6 +46,15 @@ def fixture_video(tmp_path_factory) -> Path:
     return out
 
 
+@pytest.fixture(scope="session")
+def long_wav(tmp_path_factory) -> Path:
+    """25s mono sine WAV - long enough to produce 3 sliding windows."""
+    out = tmp_path_factory.mktemp("audio") / "long.wav"
+    run_ffmpeg(["-f", "lavfi", "-i", "sine=frequency=440:duration=25",
+                "-ac", "1", str(out)])
+    return out
+
+
 @pytest.fixture(autouse=True)
 def _isolated_magicat_env(monkeypatch):
     """Tests never see ambient Magicat/provider configuration; tests that
