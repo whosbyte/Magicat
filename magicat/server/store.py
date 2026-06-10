@@ -60,6 +60,7 @@ class Event:
 class JobStore:
     def __init__(self, db_path: Path | str) -> None:
         self.db_path = str(db_path)
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         with closing(self._connect()) as conn, conn:
             conn.executescript(_SCHEMA)
 

@@ -26,6 +26,12 @@ def test_get_missing_job_returns_none(store):
     assert store.get_job("nope") is None
 
 
+def test_store_creates_missing_parent_dirs(tmp_path):
+    store = JobStore(tmp_path / "not" / "yet" / "created" / "jobs.db")
+    job = store.create_job("x", str(tmp_path))
+    assert store.get_job(job.job_id) is not None
+
+
 def test_status_transitions(store, tmp_path):
     job = store.create_job("x", str(tmp_path))
     store.set_status(job.job_id, "running")
