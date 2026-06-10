@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -26,6 +27,8 @@ from magicat.server.store import JobStore
 
 STATIC_DIR = Path(__file__).parent / "static"
 
+MAX_UPLOAD_BYTES = 2 * 1024**3   # 2 GiB - generous for short-form clips
+
 ARTIFACTS = {
     "preview.mp4": ("exports/preview.mp4", "video/mp4"),
     "report.html": ("exports/report.html", "text/html"),
@@ -37,8 +40,10 @@ ARTIFACTS = {
 
 def _require_api_key(request: Request) -> None:
     expected = os.environ.get("MAGICAT_API_KEY")
-    if expected and request.headers.get("X-API-Key") != expected:
-        raise HTTPException(status_code=401, detail="invalid API key")
+    if expected:
+        provided = request.headers.get("X-API-Key") or ""
+        if not secrets.compare_digest(provided, expected):
+            raise HTTPException(status_code=401, detail="invalid API key")
 
 
 def create_app(store: JobStore | None = None,
@@ -75,7 +80,16 @@ def create_app(store: JobStore | None = None,
         if file is not None:
             job_dir.mkdir(parents=True, exist_ok=True)
             upload_path = job_dir / "input.mp4"
-            upload_path.write_bytes(await file.read())
+            written = 0
+            with open(upload_path, "wb") as out:
+                while chunk := await file.read(1 << 20):
+                    written += len(chunk)
+                    if written > MAX_UPLOAD_BYTES:
+                        out.close()
+                        upload_path.unlink(missing_ok=True)
+                        raise HTTPException(status_code=413,
+                                            detail="upload too large")
+                    out.write(chunk)
             input_arg = str(upload_path)
         else:
             try:

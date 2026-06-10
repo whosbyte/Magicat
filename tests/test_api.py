@@ -129,3 +129,44 @@ def test_api_key_gate(tmp_path, monkeypatch):
     assert client.get("/api/jobs",
                       headers={"X-API-Key": "sekrit"}).status_code == 200
     assert client.get("/healthz").status_code == 200   # health is open
+
+
+def test_sse_stream_yields_events_and_terminates(client):
+    job_id = client.post("/api/jobs",
+                         json={"url": "https://x/v/1"}).json()["job_id"]
+    # job is already done (inline runner): the stream must replay events
+    # then terminate. NOTE: TestClient BUFFERS the whole SSE body (frames
+    # arrive together when the generator returns) - this asserts replay +
+    # ordering + termination, NOT incremental delivery; live streaming is
+    # smoke-verified via the manual uvicorn step in Task 6.
+    frames = []
+    with client.stream("GET", f"/api/jobs/{job_id}/events") as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith(
+            "text/event-stream")
+        for line in response.iter_lines():
+            if line.startswith("data: "):
+                frames.append(json.loads(line[6:]))
+    assert {"stage": "ingest", "state": "ok"} in frames
+    assert frames[-1] == {"stage": "job", "state": "done"}
+
+
+def test_sse_unknown_job_404(client):
+    assert client.get("/api/jobs/deadbeef/events").status_code == 404
+
+
+def test_index_page_served(client):
+    html = client.get("/").text
+    assert "magicat" in html.lower()
+    assert "submit" in html.lower()
+    js = client.get("/static/app.js")
+    assert js.status_code == 200
+    assert "EventSource" in js.text
+
+
+def test_upload_too_large_rejected(client, monkeypatch):
+    from magicat.server import app as app_module
+    monkeypatch.setattr(app_module, "MAX_UPLOAD_BYTES", 10)
+    r = client.post("/api/jobs",
+                    files={"file": ("big.mp4", b"x" * 64, "video/mp4")})
+    assert r.status_code == 413
