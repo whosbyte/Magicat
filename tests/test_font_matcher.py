@@ -88,3 +88,19 @@ def test_no_fonts_raises():
     with pytest.raises(RuntimeError, match="no candidate fonts"):
         FontMatcher(fonts={}).identify(
             Image.new("L", (100, 40), 0), "X")
+
+
+def test_default_font_dirs_include_bundle_and_system():
+    from magicat.modules.captions.font_dirs import default_font_dirs
+    dirs = default_font_dirs()
+    assert any("assets" in d for d in dirs)
+    assert any("Fonts" in d for d in dirs)
+
+
+def test_bundled_fonts_load_if_present():
+    from magicat.modules.captions.font_dirs import bundle_dirs
+    m = FontMatcher.from_dirs(bundle_dirs())
+    # bundle may be partial (network at build time) - whatever exists loads
+    for key, path in m.fonts.items():
+        from PIL import ImageFont
+        ImageFont.truetype(path, 32)   # raises on a broken file
