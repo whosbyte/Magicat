@@ -16,3 +16,10 @@ def test_sample_timestamps_monotonic(caption_video, tmp_path):
     samples = sample_frames(caption_video, tmp_path / "frames")
     ts = [s.t for s in samples]
     assert ts == sorted(ts)
+
+
+def test_rerun_does_not_mix_stale_frames(caption_video, tmp_path):
+    out = tmp_path / "frames"
+    first = sample_frames(caption_video, out)
+    second = sample_frames(caption_video, out)
+    assert len(second) == len(first)
