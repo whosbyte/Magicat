@@ -5,12 +5,7 @@ from pathlib import Path
 
 import pytest
 
-
-def run_ffmpeg(args: list[str]) -> None:
-    subprocess.run(
-        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *args],
-        check=True, capture_output=True,
-    )
+from magicat.core.ffmpeg import run_ffmpeg
 
 
 def probe_duration(path: Path) -> float:
@@ -63,3 +58,31 @@ def _isolated_magicat_env(monkeypatch):
                 "ACR_ACCESS_SECRET", "MAGICAT_MUSIC_PROVIDER",
                 "MAGICAT_ACQUISITION_POLICY", "MAGICAT_USE_SEPARATION"):
         monkeypatch.delenv(var, raising=False)
+
+
+WINDOWS_FONT = Path("C:/Windows/Fonts/arial.ttf")
+
+
+@pytest.fixture(scope="session")
+def caption_video(tmp_path_factory) -> Path:
+    """6s 480x854 dark clip with two burned captions at known times/positions:
+    'HELLO WORLD' t=1.0-3.0 and 'SECOND LINE' t=3.5-5.2, both bottom-center.
+    """
+    if not WINDOWS_FONT.is_file():
+        pytest.skip("test font not available")
+    out = tmp_path_factory.mktemp("captions") / "captions.mp4"
+    fontfile = "C\\:/Windows/Fonts/arial.ttf"
+    draw1 = (f"drawtext=fontfile='{fontfile}':text='HELLO WORLD'"
+             ":fontsize=42:fontcolor=white:x=(w-text_w)/2:y=h-150"
+             ":enable='between(t,1,3)'")
+    draw2 = (f"drawtext=fontfile='{fontfile}':text='SECOND LINE'"
+             ":fontsize=42:fontcolor=white:x=(w-text_w)/2:y=h-150"
+             ":enable='between(t,3.5,5.2)'")
+    run_ffmpeg([
+        "-f", "lavfi", "-i", "color=c=0x202020:s=480x854:r=25:d=6",
+        "-f", "lavfi", "-i", "sine=frequency=440:duration=6",
+        "-vf", f"{draw1},{draw2}",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+        "-shortest", str(out),
+    ])
+    return out
