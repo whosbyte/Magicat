@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import difflib
 import logging
+import re
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -27,6 +28,12 @@ log = logging.getLogger(__name__)
 
 TITLE_SIMILARITY_MIN = 0.6
 DURATION_TOLERANCE = 0.2     # +/-20% when both durations are known
+MAX_CANDIDATE_DURATION_S = 1800.0   # reject obvious loops/compilations
+
+
+def sanitize_query(text: str) -> str:
+    """Strip characters that confuse yt-dlp search-prefix parsing."""
+    return re.sub(r"\s+", " ", re.sub(r'[:;|&"\']', " ", text)).strip()
 
 
 class Candidate(BaseModel):
@@ -109,6 +116,8 @@ def validate_candidate(candidate: Candidate, match_info: dict) -> bool:
     if expected and candidate.duration:
         if abs(candidate.duration - expected) > DURATION_TOLERANCE * expected:
             return False
+    if candidate.duration and candidate.duration > MAX_CANDIDATE_DURATION_S:
+        return False
     return True
 
 
@@ -141,7 +150,7 @@ class MusicAcquisition:
         policy = config.acquisition_policy()
         match_info = {"title": music.title or "", "artist": music.artist or "",
                       "duration_s": music.duration_s}
-        query_text = f"{music.artist} {music.title}"
+        query_text = sanitize_query(f"{music.artist} {music.title}")
         links = dict(music.acquisition.links)
 
         chosen: Candidate | None = None

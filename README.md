@@ -36,6 +36,7 @@ Music identification needs a provider key (set one of):
 
 Without a key the music layer is skipped; captions always run.
 Acquisition policy: `$env:MAGICAT_ACQUISITION_POLICY = "always" | "licensed_only" | "link_only"` (default `always`).
+Note: link_only still performs network probes (to collect links); it only skips the download itself.
 Optional speech/music separation for noisy voiceovers: `pip install -e .[separation]`.
 
 ## Architecture

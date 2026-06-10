@@ -38,6 +38,8 @@ class CaptionAnalyzer:
         # style (spec 6.5 step 5, the cheaply-derivable parts): fill color
         # from the segment's middle frame, size from bbox height in pixels,
         # alignment from the bbox center. Stroke/shadow are M3.
+        # NOTE: size is the glyph-bbox INK height in px (~80% of the
+        # authoring font size), not the font's em size.
         frame_height = None
         if manifest.source.resolution:
             frame_height = int(manifest.source.resolution.split("x")[1])

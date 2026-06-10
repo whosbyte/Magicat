@@ -6,21 +6,14 @@ recommends <=15s, so 12s mono WAV clips sit comfortably inside both caps.
 """
 from __future__ import annotations
 
-import json
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from magicat.core.ffmpeg import run_ffmpeg
+from magicat.core.ffmpeg import run_ffmpeg, run_ffprobe
 
 
 def wav_duration(path: Path) -> float:
-    out = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "json", str(path)],
-        check=True, capture_output=True, text=True,
-    ).stdout
-    return float(json.loads(out)["format"]["duration"])
+    return float(run_ffprobe(path, "format=duration")["format"]["duration"])
 
 
 def extract_wav(video: Path, dest: Path, sample_rate: int = 44100) -> Path:

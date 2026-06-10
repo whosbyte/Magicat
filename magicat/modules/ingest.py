@@ -2,10 +2,10 @@
 """Ingest: fetch (yt-dlp) or copy the input, normalize to H.264 MP4, probe."""
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
+from magicat.core.ffmpeg import run_ffprobe
 from magicat.core.registry import register_analyzer
 from magicat.core.workspace import Workspace
 from magicat.manifest.schema import Manifest
@@ -47,16 +47,12 @@ def normalize(src: Path, dest: Path) -> None:
 
 
 def probe(path: Path) -> dict:
-    out = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0",
-         "-show_entries", "stream=r_frame_rate,width,height",
-         "-show_entries", "format=duration", "-of", "json", str(path)],
-        check=True, capture_output=True, text=True,
-    ).stdout
-    data = json.loads(out)
-    if not data["streams"]:
+    data = run_ffprobe(
+        path, "stream=r_frame_rate,width,height:format=duration")
+    streams = [s for s in data.get("streams", []) if "width" in s]
+    if not streams:
         raise ValueError(f"no video stream in {path}")
-    stream = data["streams"][0]
+    stream = streams[0]
     num, den = (float(x) for x in stream["r_frame_rate"].split("/"))
     return {
         "fps": num / den if den else 0.0,

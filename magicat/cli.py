@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from pathlib import Path
 
 import typer
@@ -20,10 +21,12 @@ def main() -> None:
 @app.command()
 def run(
     input_arg: str = typer.Argument(..., metavar="URL_OR_FILE"),
-    workdir: Path = typer.Option(Path("jobs") / "latest", "--workdir"),
+    workdir: Path | None = typer.Option(None, "--workdir"),
 ) -> None:
     """Deconstruct a short-form video into a layered project."""
     logging.basicConfig(level=logging.INFO)
+    if workdir is None:
+        workdir = Path("jobs") / uuid.uuid4().hex[:12]   # fresh dir per job
     try:
         manifest = run_job(input_arg, workdir)
     except Exception as exc:  # ingest failure is fatal (spec section 5)
@@ -38,7 +41,7 @@ def run(
         typer.echo(f"  layer {layer}: {state.value}")
     for export in manifest.exports:
         typer.echo(f"  export {export.format}: {export.artifact}")
-    typer.echo(f"manifest: {workdir / 'manifest.json'}")
+    typer.echo(f"manifest: {Path(workdir).resolve() / 'manifest.json'}")
 
 
 if __name__ == "__main__":

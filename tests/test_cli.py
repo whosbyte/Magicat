@@ -7,11 +7,13 @@ runner = CliRunner()
 
 
 def test_run_command_prints_summary(fixture_video, tmp_path):
+    workdir = tmp_path / "job"
     result = runner.invoke(
-        app, ["run", str(fixture_video), "--workdir", str(tmp_path / "job")])
+        app, ["run", str(fixture_video), "--workdir", str(workdir)])
     assert result.exit_code == 0
     assert "shots: 3" in result.output
     assert "preview_mp4" in result.output
+    assert str(workdir.resolve()) in result.output   # absolute manifest path
 
 
 def test_run_command_missing_input_fails():

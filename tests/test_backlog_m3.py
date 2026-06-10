@@ -121,3 +121,41 @@ def test_caption_t_end_clamped_to_duration(fixture_video, tmp_path,
     patch = analyzer.run(m, ws)
     seg = patch["captions"]["segments"][0]
     assert seg["t_end"] == 5.9            # clamped to source.duration
+
+
+def test_run_ffprobe_helper(fixture_video):
+    from magicat.core.ffmpeg import run_ffprobe
+    data = run_ffprobe(fixture_video, "format=duration")
+    assert abs(float(data["format"]["duration"]) - 6.0) < 0.2
+
+
+def test_sanitize_query():
+    from magicat.modules.audio.acquire import sanitize_query
+    assert sanitize_query('Artist: "Title"') == "Artist Title"
+    assert sanitize_query("A;B|C&D") == "A B C D"
+    assert sanitize_query("  plain  text  ") == "plain text"
+
+
+def test_unknown_duration_rejects_absurdly_long_candidate():
+    from magicat.modules.audio.acquire import validate_candidate
+    from magicat.modules.audio.acquire import Candidate
+    ten_hour_loop = Candidate(
+        url="https://youtube.com/watch?v=1",
+        title="Around the World (10 hour loop)", duration=36000.0,
+        license=None, source="youtube")
+    match_info = {"title": "Around the World", "artist": "Daft Punk",
+                  "duration_s": None}   # provider gave no duration
+    assert validate_candidate(ten_hour_loop, match_info) is False
+
+
+def test_cli_default_workdir_is_per_job(fixture_video, tmp_path,
+                                        monkeypatch):
+    from typer.testing import CliRunner
+    from magicat.cli import app
+    monkeypatch.chdir(tmp_path)
+    runner = CliRunner()
+    r1 = runner.invoke(app, ["run", str(fixture_video)])
+    r2 = runner.invoke(app, ["run", str(fixture_video)])
+    assert r1.exit_code == 0 and r2.exit_code == 0
+    jobs = list((tmp_path / "jobs").iterdir())
+    assert len(jobs) == 2          # one fresh directory per job, no reuse
