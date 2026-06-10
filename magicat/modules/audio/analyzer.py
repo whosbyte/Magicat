@@ -11,6 +11,7 @@ from magicat.manifest.schema import Manifest
 from magicat.modules.audio.extract import cut_windows, extract_wav, wav_duration
 from magicat.modules.audio.identify import align, recognize_windows
 from magicat.modules.audio.providers import providers_from_env
+from magicat.modules.audio import separation
 
 WINDOW_S = 12.0
 
@@ -29,7 +30,13 @@ class AudioAnalyzer:
 
         wav = extract_wav(Path(manifest.source.file),
                           ws.media_dir / "audio.wav")
-        fingerprint_input = wav  # Task 7 swaps in the separated music bed
+        fingerprint_input = wav
+        speech_stem: str | None = None
+        if separation.enabled():
+            music_bed, vocals = separation.split_music_bed(
+                wav, ws.media_dir / "stems")
+            fingerprint_input = music_bed
+            speech_stem = str(vocals)
         video_duration = manifest.source.duration or wav_duration(wav)
 
         windows = cut_windows(fingerprint_input,
@@ -49,4 +56,5 @@ class AudioAnalyzer:
             audio["music"]["detected"] = False
         else:
             audio["music"] = music
+        audio["speech_stem"] = speech_stem
         return {"audio": audio, "layers_status": {"music": "ok"}}
