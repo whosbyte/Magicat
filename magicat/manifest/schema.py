@@ -63,6 +63,7 @@ class SongSegment(StrictModel):
 
 class Acquisition(StrictModel):
     status: Literal["acquired", "failed", "skipped"] = "skipped"
+    skip_reason: str | None = None
     file: str | None = None
     license: str | None = None
     links: dict[str, str] = Field(default_factory=dict)
@@ -72,6 +73,7 @@ class Music(StrictModel):
     detected: bool = False
     title: str | None = None
     artist: str | None = None
+    provider: str | None = None       # which service identified the song
     duration_s: float | None = None   # full song duration when the provider knows it
     provider_ids: dict[str, str] = Field(default_factory=dict)
     song_segment: SongSegment = Field(default_factory=SongSegment)
@@ -104,6 +106,7 @@ class CaptionSegment(StrictModel):
     t_start: float
     t_end: float
     bbox: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    crops: list[str] = Field(default_factory=list)
     style: CaptionStyle = Field(default_factory=CaptionStyle)
 
 

@@ -60,6 +60,8 @@ def align(windows: list[AudioWindow], matches: list[SongMatch | None],
     counts: dict[tuple[str, str], int] = {}
     for _, match in hits:
         counts[identity(match)] = counts.get(identity(match), 0) + 1
+    # ties resolve deterministically by dict insertion order (= earliest
+    # window's identity wins) - acceptable at window-level precision
     winner = max(counts, key=lambda k: counts[k])
     hits = [(w, m) for w, m in hits if identity(m) == winner]
 
@@ -84,6 +86,7 @@ def align(windows: list[AudioWindow], matches: list[SongMatch | None],
         "detected": True,
         "title": best.title,
         "artist": best.artist,
+        "provider": best.provider,
         "duration_s": best.duration_s,
         "provider_ids": best.provider_ids,
         "song_segment": {

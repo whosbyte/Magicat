@@ -92,3 +92,4 @@ def test_align_carries_metadata_from_best_match():
     assert music["provider_ids"] == {"spotify": "x"}
     assert music["acquisition"]["links"] == {"spotify": "url"}
     assert music["duration_s"] == 200.0   # consumed by acquisition validation
+    assert music["provider"] == "fake"

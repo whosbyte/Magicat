@@ -29,6 +29,12 @@ class CaptionAnalyzer:
         segments = cluster_detections(detections,
                                       frame_interval=1.0 / SAMPLE_FPS)
 
+        # clustering extends t_end by one frame interval; never overshoot
+        # the actual video duration
+        if manifest.source.duration:
+            for seg in segments:
+                seg["t_end"] = min(seg["t_end"], manifest.source.duration)
+
         # style (spec 6.5 step 5, the cheaply-derivable parts): fill color
         # from the segment's middle frame, size from bbox height in pixels,
         # alignment from the bbox center. Stroke/shadow are M3.

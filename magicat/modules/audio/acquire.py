@@ -176,6 +176,9 @@ class MusicAcquisition:
 
         if not download_allowed:
             acq["status"] = "skipped"
+            acq["skip_reason"] = (
+                "policy:link_only" if policy == "link_only"
+                else f"license:{chosen.license}")
             return {"audio": audio,
                     "layers_status": {"music_acquisition": "ok"}}
 
