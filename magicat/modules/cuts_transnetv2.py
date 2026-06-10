@@ -17,6 +17,7 @@ from magicat.modules.cuts_pyscenedetect import extract_keyframe
 @register_analyzer
 class TransNetV2Detector:
     name = "cut_detection_transnetv2"
+    layer = "shots"
     needs_gpu = True
 
     def run(self, manifest: Manifest, ws: Workspace) -> dict:

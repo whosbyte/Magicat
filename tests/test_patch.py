@@ -34,3 +34,11 @@ def test_unknown_section_raises():
     m = Manifest(job_id="j")
     with pytest.raises(ValidationError):
         apply_patch(m, {"bogus": 1})
+
+
+def test_exports_append_instead_of_replacing():
+    m = Manifest(job_id="j", exports=[
+        {"format": "preview_mp4", "artifact": "a.mp4"}])
+    m2 = apply_patch(m, {"exports": [
+        {"format": "premiere_zip", "artifact": "b.zip"}]})
+    assert [e.format for e in m2.exports] == ["preview_mp4", "premiere_zip"]

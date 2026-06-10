@@ -27,6 +27,7 @@ def extract_keyframe(video: Path, t: float, dest: Path) -> None:
 @register_analyzer
 class CutDetector:
     name = "cut_detection"
+    layer = "shots"
     needs_gpu = False
 
     def run(self, manifest: Manifest, ws: Workspace) -> dict:

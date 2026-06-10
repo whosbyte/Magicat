@@ -67,3 +67,16 @@ def test_duplicate_name_raises():
 
             def run(self, manifest, ws):
                 return {}
+
+
+def test_analyzer_layer_attribute():
+    @registry.register_analyzer
+    class WithLayer:
+        name = "layered"
+        layer = "mylayer"
+        needs_gpu = False
+
+        def run(self, manifest, ws):
+            return {}
+
+    assert registry.get_analyzer("layered").layer == "mylayer"

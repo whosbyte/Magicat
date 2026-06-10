@@ -15,6 +15,7 @@ __all__ = ["Analyzer", "Exporter", "ManifestPatch"]
 @runtime_checkable
 class Analyzer(Protocol):
     name: str
+    layer: str  # layers_status key this analyzer owns (marked failed on crash)
     needs_gpu: bool
 
     def run(self, manifest: Manifest, ws: Workspace) -> ManifestPatch: ...

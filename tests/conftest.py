@@ -44,3 +44,13 @@ def fixture_video(tmp_path_factory) -> Path:
     run_ffmpeg(["-f", "concat", "-safe", "0", "-i", str(concat_list),
                 "-c", "copy", str(out)])
     return out
+
+
+@pytest.fixture(autouse=True)
+def _isolated_magicat_env(monkeypatch):
+    """Tests never see ambient Magicat/provider configuration; tests that
+    need a var set it explicitly via monkeypatch.setenv (composes fine)."""
+    for var in ("AUDD_API_TOKEN", "ACR_HOST", "ACR_ACCESS_KEY",
+                "ACR_ACCESS_SECRET", "MAGICAT_MUSIC_PROVIDER",
+                "MAGICAT_ACQUISITION_POLICY", "MAGICAT_USE_SEPARATION"):
+        monkeypatch.delenv(var, raising=False)

@@ -68,6 +68,7 @@ def probe(path: Path) -> dict:
 @register_analyzer
 class IngestAnalyzer:
     name = "ingest"
+    layer = "source"
     needs_gpu = False
     downloader = staticmethod(download)  # injectable for tests
 

@@ -72,6 +72,7 @@ class Music(StrictModel):
     detected: bool = False
     title: str | None = None
     artist: str | None = None
+    duration_s: float | None = None   # full song duration when the provider knows it
     provider_ids: dict[str, str] = Field(default_factory=dict)
     song_segment: SongSegment = Field(default_factory=SongSegment)
     timeline_offset: float = 0.0

@@ -11,6 +11,7 @@ def test_run_job_end_to_end(fixture_video, tmp_path):
 
     assert manifest.layers_status["source"] == LayerState.OK
     assert manifest.layers_status["shots"] == LayerState.OK
+    assert manifest.layers_status["preview_mp4"] == LayerState.OK
     assert len(manifest.shots) == 3
     assert any(e.format == "preview_mp4" for e in manifest.exports)
     assert (workdir / "manifest.json").is_file()
@@ -27,7 +28,8 @@ def test_analyzer_failure_degrades_gracefully(fixture_video, tmp_path,
     monkeypatch.setattr(registry.get_analyzer("cut_detection"), "run", boom)
     manifest = run_job(str(fixture_video), tmp_path / "job")
     assert manifest.layers_status["shots"] == LayerState.FAILED
-    # job still completed and was persisted
+    # exporter cannot render without shots and must say so now
+    assert manifest.layers_status["preview_mp4"] == LayerState.FAILED
     assert (tmp_path / "job" / "manifest.json").is_file()
 
 

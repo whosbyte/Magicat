@@ -17,11 +17,7 @@ from magicat.manifest.schema import Manifest, Source
 
 log = logging.getLogger(__name__)
 
-# layer name written to layers_status when an analyzer crashes before
-# returning its patch
-LAYER_OF_ANALYZER = {"cut_detection": "shots"}
-
-ANALYZERS = ["cut_detection"]          # M2+: audio_analysis, caption_analysis
+ANALYZERS = ["cut_detection"]          # Tasks 6/8/12 append audio/captions/acquisition
 EXPORTERS = ["preview_mp4"]            # M3+: premiere_resolve_zip
 
 
@@ -55,20 +51,21 @@ def run_job(input_arg: str, workdir: Path) -> Manifest:
             manifest = apply_patch(manifest, analyzer.run(manifest, ws))
         except Exception:
             log.exception("analyzer %s failed", name)
-            layer = LAYER_OF_ANALYZER.get(name, name)
             manifest = apply_patch(
-                manifest, {"layers_status": {layer: "failed"}})
+                manifest, {"layers_status": {analyzer.layer: "failed"}})
 
     for fmt in EXPORTERS:
         exporter = registry.get_exporter(fmt)
         try:
             artifact = exporter.export(manifest, ws)
-            manifest = apply_patch(manifest, {"exports": [
-                *[e.model_dump() for e in manifest.exports],
-                {"format": fmt, "artifact": str(artifact)},
-            ]})
+            manifest = apply_patch(manifest, {
+                "exports": [{"format": fmt, "artifact": str(artifact)}],
+                "layers_status": {fmt: "ok"},
+            })
         except Exception:
             log.exception("exporter %s failed", fmt)
+            manifest = apply_patch(
+                manifest, {"layers_status": {fmt: "failed"}})
 
     ws.save_manifest(manifest)
     return manifest
