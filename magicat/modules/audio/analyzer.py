@@ -43,13 +43,21 @@ class AudioAnalyzer:
                               ws.media_dir / "audio_windows",
                               window_s=WINDOW_S)
         music = None
+        all_providers_dead = True
         for provider in providers:   # primary first; fallback on no result
-            matches = recognize_windows(windows, provider)
+            matches, errors = recognize_windows(windows, provider)
+            if errors < len(windows):
+                all_providers_dead = False
             music = align(windows, matches,
                           video_duration=video_duration,
                           window_s=WINDOW_S)
             if music is not None:
                 break
+
+        if music is None and all_providers_dead:
+            # bad keys / quota exhausted on every window of every provider:
+            # report a failure, not a confident "no music detected"
+            return {"layers_status": {"music": "failed"}}
 
         audio = manifest.audio.model_dump(mode="json")
         if music is None:

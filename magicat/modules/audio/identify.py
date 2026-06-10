@@ -27,16 +27,23 @@ ANCHOR_TOLERANCE_S = 5.0
 
 
 def recognize_windows(windows: list[AudioWindow],
-                      provider: MusicIdProvider) -> list[SongMatch | None]:
-    """Identify every window; provider errors degrade to no-match."""
+                      provider: MusicIdProvider
+                      ) -> tuple[list[SongMatch | None], int]:
+    """Identify every window; provider errors degrade to no-match.
+
+    Returns (matches, error_count) so the caller can tell silence
+    (no match) apart from a dead provider (all windows errored).
+    """
     results: list[SongMatch | None] = []
+    errors = 0
     for window in windows:
         try:
             results.append(provider.identify(window.path))
         except (ProviderError, OSError) as exc:
             log.warning("window at %.1fs failed: %s", window.t_start, exc)
             results.append(None)
-    return results
+            errors += 1
+    return results, errors
 
 
 def align(windows: list[AudioWindow], matches: list[SongMatch | None],

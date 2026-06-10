@@ -91,6 +91,23 @@ def test_config_acquisition_policy(monkeypatch):
         config.acquisition_policy()
 
 
+class DeadProvider:
+    name = "dead"
+
+    def identify(self, clip):
+        from magicat.modules.audio.providers import ProviderError
+        raise ProviderError("quota exhausted")
+
+
+def test_dead_providers_mark_layer_failed(ingested, monkeypatch):
+    m, ws = ingested
+    analyzer = AudioAnalyzer()
+    monkeypatch.setattr(analyzer, "provider_factory",
+                        lambda: [DeadProvider(), DeadProvider()])
+    patch = analyzer.run(m, ws)
+    assert patch == {"layers_status": {"music": "failed"}}
+
+
 def test_pipeline_includes_audio_analysis(fixture_video, tmp_path):
     # ambient provider env is cleared by the autouse fixture (Task 1)
     from magicat.core.pipeline import run_job

@@ -34,10 +34,11 @@ class FakeProvider:
 def test_recognize_windows_maps_provider_errors_to_none():
     provider = FakeProvider([m(30.0), ProviderError("quota"), None])
     windows = [w(0.0), w(10.0), w(20.0)]
-    results = recognize_windows(windows, provider)
+    results, errors = recognize_windows(windows, provider)
     assert results[0].song_offset_s == 30.0
     assert results[1] is None
     assert results[2] is None
+    assert errors == 1
 
 
 def test_align_consistent_windows():

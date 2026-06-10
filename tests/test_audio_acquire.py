@@ -152,6 +152,23 @@ def test_wrong_duration_candidate_rejected_end_to_end(tmp_path, monkeypatch,
     assert patch["audio"]["music"]["acquisition"]["status"] == "failed"
 
 
+def test_one_failing_resolver_does_not_poison_chain(tmp_path, monkeypatch,
+                                                    song_mp3):
+    ws = Workspace(tmp_path / "job")
+    analyzer = MusicAcquisition()
+    monkeypatch.setenv("MAGICAT_ACQUISITION_POLICY", "always")
+
+    def prober(query):
+        if query.startswith("scsearch"):
+            raise RuntimeError("extractor exploded")
+        return cand(url="https://youtube.com/watch?v=1", source="youtube")
+
+    monkeypatch.setattr(analyzer, "prober", prober)
+    monkeypatch.setattr(analyzer, "downloader", lambda c, out: song_mp3)
+    patch = analyzer.run(music_manifest(), ws)
+    assert patch["audio"]["music"]["acquisition"]["status"] == "acquired"
+
+
 def test_licensed_only_prefers_cc_candidate_later_in_chain(tmp_path,
                                                            monkeypatch,
                                                            song_mp3):

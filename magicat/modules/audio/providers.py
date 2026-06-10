@@ -66,41 +66,45 @@ class AudDProvider:
             )
         resp.raise_for_status()
         data = resp.json()
-        if data["status"] == "error":
-            err = data["error"]
-            raise ProviderError(
-                f"AudD error {err['error_code']}: {err['error_message']}")
-        result = data.get("result")
-        if not result:
-            return None
-
-        timecode = result.get("timecode")
-        if not timecode:
-            raise ProviderError("AudD result missing timecode")
         try:
-            song_offset_s = parse_timecode(timecode)
-        except ValueError as exc:
+            if data["status"] == "error":
+                err = data["error"]
+                raise ProviderError(
+                    f"AudD error {err['error_code']}: {err['error_message']}")
+            result = data.get("result")
+            if not result:
+                return None
+
+            timecode = result.get("timecode")
+            if not timecode:
+                raise ProviderError("AudD result missing timecode")
+            try:
+                song_offset_s = parse_timecode(timecode)
+            except ValueError as exc:
+                raise ProviderError(
+                    f"AudD malformed timecode {timecode!r}") from exc
+
+            links: dict[str, str] = {}
+            provider_ids: dict[str, str] = {}
+            if result.get("song_link"):
+                links["song_link"] = result["song_link"]
+            spotify = result.get("spotify") or {}
+            if spotify.get("external_urls", {}).get("spotify"):
+                links["spotify"] = spotify["external_urls"]["spotify"]
+            if spotify.get("id"):
+                provider_ids["spotify"] = spotify["id"]
+
+            return SongMatch(
+                title=result["title"],
+                artist=result["artist"],
+                song_offset_s=song_offset_s,
+                provider=self.name,
+                provider_ids=provider_ids,
+                links=links,
+            )
+        except (KeyError, TypeError) as exc:
             raise ProviderError(
-                f"AudD malformed timecode {timecode!r}") from exc
-
-        links: dict[str, str] = {}
-        provider_ids: dict[str, str] = {}
-        if result.get("song_link"):
-            links["song_link"] = result["song_link"]
-        spotify = result.get("spotify") or {}
-        if spotify.get("external_urls", {}).get("spotify"):
-            links["spotify"] = spotify["external_urls"]["spotify"]
-        if spotify.get("id"):
-            provider_ids["spotify"] = spotify["id"]
-
-        return SongMatch(
-            title=result["title"],
-            artist=result["artist"],
-            song_offset_s=song_offset_s,
-            provider=self.name,
-            provider_ids=provider_ids,
-            links=links,
-        )
+                f"AudD malformed response: {exc!r}") from exc
 
 
 class ACRCloudProvider:
@@ -147,7 +151,11 @@ class ACRCloudProvider:
         )
         resp.raise_for_status()
         data = resp.json()
-        code = data["status"]["code"]
+        try:
+            code = data["status"]["code"]
+        except (KeyError, TypeError) as exc:
+            raise ProviderError(
+                f"ACRCloud malformed response: {exc!r}") from exc
         if code == 1001:
             return None
         if code != 0:

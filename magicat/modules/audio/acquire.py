@@ -146,7 +146,11 @@ class MusicAcquisition:
 
         chosen: Candidate | None = None
         for query in (f"scsearch1:{query_text}", f"ytsearch1:{query_text}"):
-            candidate = self.prober(query)
+            try:
+                candidate = self.prober(query)
+            except Exception:
+                log.exception("resolver probe failed for %s", query)
+                continue
             if candidate is None:
                 continue
             if not validate_candidate(candidate, match_info):
