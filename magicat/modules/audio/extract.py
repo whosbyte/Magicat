@@ -11,12 +11,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-
-def _ffmpeg(args: list[str]) -> None:
-    subprocess.run(
-        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *args],
-        check=True, capture_output=True,
-    )
+from magicat.core.ffmpeg import run_ffmpeg
 
 
 def wav_duration(path: Path) -> float:
@@ -30,8 +25,8 @@ def wav_duration(path: Path) -> float:
 
 def extract_wav(video: Path, dest: Path, sample_rate: int = 44100) -> Path:
     """Full audio track as stereo WAV (44.1kHz - what demucs expects too)."""
-    _ffmpeg(["-i", str(video), "-vn", "-ac", "2", "-ar", str(sample_rate),
-             str(dest)])
+    run_ffmpeg(["-i", str(video), "-vn", "-ac", "2", "-ar", str(sample_rate),
+                str(dest)])
     return dest
 
 
@@ -54,9 +49,9 @@ def cut_windows(wav: Path, out_dir: Path, window_s: float = 12.0,
         remaining = duration - t
         if remaining < min_window_s and windows:
             break  # tail too short to fingerprint reliably
-        clip = out_dir / f"win_{int(t):04d}.wav"
-        _ffmpeg(["-ss", f"{t:.3f}", "-t", f"{window_s:.3f}", "-i", str(wav),
-                 "-ac", "1", str(clip)])
+        clip = out_dir / f"win_{t:08.3f}.wav"
+        run_ffmpeg(["-ss", f"{t:.3f}", "-t", f"{window_s:.3f}", "-i", str(wav),
+                    "-ac", "1", str(clip)])
         windows.append(AudioWindow(t_start=t, path=clip))
         t += stride_s
     return windows
