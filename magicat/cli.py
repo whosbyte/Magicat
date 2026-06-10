@@ -47,5 +47,20 @@ def run(
     typer.echo(f"manifest: {Path(workdir).resolve() / 'manifest.json'}")
 
 
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(8123, "--port"),
+    jobs_root: Path = typer.Option(Path("jobs"), "--jobs-root"),
+) -> None:
+    """Run the Magicat web service (UI at http://HOST:PORT/)."""
+    import uvicorn
+
+    from magicat.server.app import create_app
+
+    logging.basicConfig(level=logging.INFO)
+    uvicorn.run(create_app(jobs_root=jobs_root), host=host, port=port)
+
+
 if __name__ == "__main__":
     app()

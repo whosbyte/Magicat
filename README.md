@@ -3,9 +3,8 @@
 Deconstructs short-form videos (TikTok / Reels / Shorts) into editable
 layers — scene cuts, music, captions — and rebuilds them as NLE projects.
 
-**Status:** M3 — full v1 deliverable: cut detection, music identification +
-acquisition, caption OCR + font identification, Premiere/Resolve project
-export, preview with music, HTML report.
+**Status:** M4 — launchable v1: web service with live progress, plus the
+full deconstruction pipeline (cuts, music, captions + fonts, NLE export).
 
 Docs: [design spec](docs/superpowers/specs/2026-06-09-magicat-framework-design.md)
 · [M1 plan](docs/superpowers/plans/2026-06-09-m1-skeleton.md)
@@ -54,3 +53,16 @@ matcher; add your own via `$env:MAGICAT_FONT_DIRS`.
 Modular monolith. Every analysis layer and exporter is a plugin that
 reads/writes the **Reconstruction Manifest** (`magicat/manifest/schema.py`)
 and never calls sibling modules. See the design spec for the full picture.
+
+## Web service (M4)
+
+    .venv/Scripts/magicat serve --port 8123
+
+Open http://127.0.0.1:8123/ - paste a short-form URL or upload a clip,
+watch per-layer progress live, then preview and download the deliverables.
+JSON API: POST /api/jobs, GET /api/jobs/{id}, GET /api/jobs/{id}/events
+(SSE), GET /api/jobs/{id}/artifacts/{name}. Optional auth: set
+$env:MAGICAT_API_KEY and send X-API-Key. Local-first stack (SQLite +
+thread pool + static UI) behind the same seams the cloud deployment
+(Celery/Postgres/S3/Next.js) slots into - see the M4 plan's deviation
+table.
