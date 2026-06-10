@@ -212,3 +212,27 @@ def test_acrcloud_missing_offsets_raise_provider_error(monkeypatch, clip):
     p = ACRCloudProvider(host="h", access_key="k", access_secret="s")
     with pytest.raises(ProviderError, match="malformed"):
         p.identify(clip)
+
+
+def test_providers_from_env(monkeypatch):
+    from magicat.modules.audio.providers import providers_from_env
+
+    assert providers_from_env() == []          # env cleared by autouse fixture
+
+    monkeypatch.setenv("AUDD_API_TOKEN", "tok")
+    assert [p.name for p in providers_from_env()] == ["audd"]
+
+    monkeypatch.setenv("ACR_HOST", "h")
+    monkeypatch.setenv("ACR_ACCESS_KEY", "k")
+    monkeypatch.setenv("ACR_ACCESS_SECRET", "s")
+    # auto mode: AudD primary, ACRCloud fallback (spec 6.3 step 2)
+    assert [p.name for p in providers_from_env()] == ["audd", "acrcloud"]
+
+    monkeypatch.setenv("MAGICAT_MUSIC_PROVIDER", "acrcloud")
+    assert [p.name for p in providers_from_env()] == ["acrcloud"]
+    monkeypatch.setenv("MAGICAT_MUSIC_PROVIDER", "none")
+    assert providers_from_env() == []
+    monkeypatch.setenv("MAGICAT_MUSIC_PROVIDER", "bogus")
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        providers_from_env()

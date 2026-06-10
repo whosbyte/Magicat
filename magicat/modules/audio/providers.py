@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import os
 import time
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -189,3 +190,26 @@ class ACRCloudProvider:
             provider_ids=provider_ids,
             links=links,
         )
+
+
+def providers_from_env() -> list[MusicIdProvider]:
+    """Ordered provider chain from env: AudD primary, ACRCloud fallback
+    (spec 6.3 step 2). MAGICAT_MUSIC_PROVIDER narrows: audd|acrcloud|none.
+    """
+    selection = os.environ.get("MAGICAT_MUSIC_PROVIDER", "auto")
+    if selection == "none":
+        return []
+    if selection not in ("auto", "audd", "acrcloud"):
+        raise ValueError(f"unknown MAGICAT_MUSIC_PROVIDER {selection!r}")
+
+    chain: list[MusicIdProvider] = []
+    token = os.environ.get("AUDD_API_TOKEN")
+    if selection in ("auto", "audd") and token:
+        chain.append(AudDProvider(api_token=token))
+    host = os.environ.get("ACR_HOST")
+    key = os.environ.get("ACR_ACCESS_KEY")
+    secret = os.environ.get("ACR_ACCESS_SECRET")
+    if selection in ("auto", "acrcloud") and host and key and secret:
+        chain.append(ACRCloudProvider(host=host, access_key=key,
+                                      access_secret=secret))
+    return chain

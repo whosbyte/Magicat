@@ -17,12 +17,13 @@ from magicat.manifest.schema import Manifest, Source
 
 log = logging.getLogger(__name__)
 
-ANALYZERS = ["cut_detection"]          # Tasks 6/8/12 append audio/captions/acquisition
+ANALYZERS = ["cut_detection", "audio_analysis"]   # Task 8/12 extend further
 EXPORTERS = ["preview_mp4"]            # M3+: premiere_resolve_zip
 
 
 def load_builtin_modules() -> None:
     """Import modules for their @register side effects."""
+    import magicat.modules.audio.analyzer  # noqa: F401
     import magicat.modules.cuts_pyscenedetect  # noqa: F401
     import magicat.modules.cuts_transnetv2  # noqa: F401
     import magicat.modules.ingest  # noqa: F401

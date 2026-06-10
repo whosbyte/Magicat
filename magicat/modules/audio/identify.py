@@ -71,7 +71,7 @@ def align(windows: list[AudioWindow], matches: list[SongMatch | None],
     timeline_offset = first_w.t_start
     start_in_song = max(0.0, timeline_offset - consensus)
     span_end = min(video_duration, last_w.t_start + window_s)
-    best = inliers[0][1]
+    best = max(inliers, key=lambda wm: wm[1].score)[1]
 
     return {
         "detected": True,
@@ -81,7 +81,7 @@ def align(windows: list[AudioWindow], matches: list[SongMatch | None],
         "provider_ids": best.provider_ids,
         "song_segment": {
             "start_in_song": start_in_song,
-            "duration": span_end - timeline_offset,
+            "duration": max(0.0, span_end - timeline_offset),
         },
         "timeline_offset": timeline_offset,
         "acquisition": {
