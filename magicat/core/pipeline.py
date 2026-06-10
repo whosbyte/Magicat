@@ -45,7 +45,14 @@ def load_builtin_modules() -> None:
 
 def run_job(input_arg: str, workdir: Path, job_id: str | None = None,
             on_progress: ProgressFn | None = None) -> Manifest:
-    progress = on_progress or _noop_progress
+    raw_progress = on_progress or _noop_progress
+
+    def progress(stage: str, state: str) -> None:
+        try:
+            raw_progress(stage, state)
+        except Exception:                  # telemetry must never kill the job
+            log.exception("progress callback failed at %s/%s", stage, state)
+
     load_builtin_modules()
     # resolve so every path persisted into the manifest is absolute - the
     # manifest outlives the process and may be loaded from a different cwd

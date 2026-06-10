@@ -10,6 +10,7 @@ from __future__ import annotations
 import sqlite3
 import time
 import uuid
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -59,7 +60,7 @@ class Event:
 class JobStore:
     def __init__(self, db_path: Path | str) -> None:
         self.db_path = str(db_path)
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.executescript(_SCHEMA)
 
     def _connect(self) -> sqlite3.Connection:
@@ -73,7 +74,7 @@ class JobStore:
         job = Job(job_id=uuid.uuid4().hex, status="queued",
                   input_arg=input_arg, workdir=workdir, error=None,
                   created_at=now, updated_at=now)
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 "INSERT INTO jobs VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (job.job_id, job.status, job.input_arg, job.workdir,
@@ -81,7 +82,7 @@ class JobStore:
         return job
 
     def get_job(self, job_id: str) -> Job | None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             row = conn.execute("SELECT * FROM jobs WHERE job_id = ?",
                                (job_id,)).fetchone()
         return Job(**dict(row)) if row else None
@@ -90,28 +91,28 @@ class JobStore:
                    error: str | None = None) -> None:
         if status not in VALID_STATUSES:
             raise ValueError(f"invalid status {status!r}")
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 "UPDATE jobs SET status = ?, error = ?, updated_at = ? "
                 "WHERE job_id = ?",
                 (status, error, time.time(), job_id))
 
     def add_event(self, job_id: str, stage: str, state: str) -> None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 "INSERT INTO events (job_id, stage, state, ts) "
                 "VALUES (?, ?, ?, ?)",
                 (job_id, stage, state, time.time()))
 
     def events_since(self, job_id: str, after_seq: int) -> list[Event]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             rows = conn.execute(
                 "SELECT * FROM events WHERE job_id = ? AND seq > ? "
                 "ORDER BY seq", (job_id, after_seq)).fetchall()
         return [Event(**dict(r)) for r in rows]
 
     def list_jobs(self, limit: int = 50) -> list[Job]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             rows = conn.execute(
                 "SELECT * FROM jobs ORDER BY created_at DESC, rowid DESC "
                 "LIMIT ?", (limit,)).fetchall()

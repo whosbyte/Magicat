@@ -42,3 +42,13 @@ def test_progress_callback_reports_failure(fixture_video, tmp_path,
 def test_progress_callback_optional(fixture_video, tmp_path):
     manifest = run_job(str(fixture_video), tmp_path / "job")
     assert manifest.layers_status["shots"].value == "ok"
+
+
+def test_raising_progress_callback_does_not_fail_job(fixture_video,
+                                                     tmp_path):
+    def explosive(stage, state):
+        raise RuntimeError("telemetry down")
+
+    manifest = run_job(str(fixture_video), tmp_path / "job",
+                       on_progress=explosive)
+    assert manifest.layers_status["shots"].value == "ok"
