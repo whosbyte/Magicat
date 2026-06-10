@@ -153,9 +153,17 @@ class ACRCloudProvider:
             raise ProviderError(
                 f"ACRCloud error {code}: {data['status']['msg']}")
 
-        best = data["metadata"]["music"][0]   # best match first
-        offset_s = max(0.0, (best["db_begin_time_offset_ms"]
-                              - best["sample_begin_time_offset_ms"]) / 1000.0)
+        try:
+            best = data["metadata"]["music"][0]   # best match first
+            # song position at clip start (docs-sanctioned formula; the
+            # play_offset_ms field reflects the matched region's position)
+            offset_s = max(0.0, (best["db_begin_time_offset_ms"]
+                                 - best["sample_begin_time_offset_ms"])
+                           / 1000.0)
+            title = best["title"]
+        except (KeyError, IndexError) as exc:
+            raise ProviderError(
+                f"ACRCloud malformed hit response: {exc!r}") from exc
 
         provider_ids: dict[str, str] = {}
         links: dict[str, str] = {}
@@ -172,7 +180,7 @@ class ACRCloudProvider:
 
         duration_ms = best.get("duration_ms")
         return SongMatch(
-            title=best["title"],
+            title=title,
             artist=", ".join(a["name"] for a in best.get("artists", [])),
             song_offset_s=offset_s,
             provider=self.name,

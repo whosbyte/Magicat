@@ -189,3 +189,26 @@ def test_acrcloud_negative_offset_clamped(monkeypatch, clip):
                         lambda *a, **k: FakeResponse(hit))
     p = ACRCloudProvider(host="h", access_key="k", access_secret="s")
     assert p.identify(clip).song_offset_s == 0.0
+
+
+def test_acrcloud_empty_music_list_raises_provider_error(monkeypatch, clip):
+    from magicat.modules.audio.providers import ACRCloudProvider
+    payload = {"status": {"code": 0, "msg": "Success", "version": "1.0"},
+               "metadata": {"music": []}}
+    monkeypatch.setattr(providers.requests, "post",
+                        lambda *a, **k: FakeResponse(payload))
+    p = ACRCloudProvider(host="h", access_key="k", access_secret="s")
+    with pytest.raises(ProviderError, match="malformed"):
+        p.identify(clip)
+
+
+def test_acrcloud_missing_offsets_raise_provider_error(monkeypatch, clip):
+    from magicat.modules.audio.providers import ACRCloudProvider
+    payload = {"status": {"code": 0, "msg": "Success", "version": "1.0"},
+               "metadata": {"music": [{"title": "T",
+                                       "artists": [{"name": "A"}]}]}}
+    monkeypatch.setattr(providers.requests, "post",
+                        lambda *a, **k: FakeResponse(payload))
+    p = ACRCloudProvider(host="h", access_key="k", access_secret="s")
+    with pytest.raises(ProviderError, match="malformed"):
+        p.identify(clip)
