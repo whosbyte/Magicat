@@ -14,12 +14,13 @@ from magicat.core import registry
 from magicat.core.workspace import Workspace
 from magicat.manifest.patch import apply_patch
 from magicat.manifest.schema import Manifest, Source
+from magicat.modules.report import build_report
 
 log = logging.getLogger(__name__)
 
 ANALYZERS = ["cut_detection", "audio_analysis", "caption_analysis",
              "music_acquisition"]
-EXPORTERS = ["preview_mp4"]            # M3+: premiere_resolve_zip
+EXPORTERS = ["preview_mp4", "report_html"]   # Task 10 appends the zip
 
 
 def load_builtin_modules() -> None:
@@ -31,6 +32,7 @@ def load_builtin_modules() -> None:
     import magicat.modules.cuts_transnetv2  # noqa: F401
     import magicat.modules.ingest  # noqa: F401
     import magicat.modules.render_preview  # noqa: F401
+    import magicat.modules.report  # noqa: F401
 
 
 def run_job(input_arg: str, workdir: Path,
@@ -59,6 +61,8 @@ def run_job(input_arg: str, workdir: Path,
             manifest = apply_patch(
                 manifest, {"layers_status": {analyzer.layer: "failed"}})
 
+    manifest = apply_patch(manifest, {"report": build_report(manifest)})
+
     for fmt in EXPORTERS:
         exporter = registry.get_exporter(fmt)
         try:
@@ -71,6 +75,8 @@ def run_job(input_arg: str, workdir: Path,
             log.exception("exporter %s failed", fmt)
             manifest = apply_patch(
                 manifest, {"layers_status": {fmt: "failed"}})
+
+    manifest = apply_patch(manifest, {"report": build_report(manifest)})
 
     ws.save_manifest(manifest)
     return manifest
