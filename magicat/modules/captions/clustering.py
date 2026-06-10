@@ -131,6 +131,8 @@ def estimate_fill(image: Path, bbox: Bbox) -> str:
     crop = img.crop((int(x * width), int(y * height),
                      int((x + w) * width), int((y + h) * height)))
     pixels = np.asarray(crop).reshape(-1, 3).astype(float)
+    if pixels.shape[0] == 0:
+        return "#000000"   # degenerate box - no pixels to sample
     luminance = pixels @ [0.299, 0.587, 0.114]
     bright = pixels[luminance >= np.percentile(luminance, 75)]
     r, g, b = (int(c) for c in np.median(bright, axis=0))

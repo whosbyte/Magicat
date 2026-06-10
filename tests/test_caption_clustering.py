@@ -86,3 +86,11 @@ def test_estimate_fill_white_text(tmp_path):
     fill = estimate_fill(p, (140 / 480, 690 / 854, 200 / 480, 50 / 854))
     r, g, b = (int(fill[i:i + 2], 16) for i in (1, 3, 5))
     assert r > 200 and g > 200 and b > 200
+
+
+def test_estimate_fill_zero_area_bbox(tmp_path):
+    from PIL import Image
+    img = Image.new("RGB", (480, 854), (32, 32, 32))
+    p = tmp_path / "frame.png"
+    img.save(p)
+    assert estimate_fill(p, (0.5, 0.5, 0.0, 0.0)) == "#000000"
