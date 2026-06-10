@@ -57,7 +57,9 @@ def _isolated_magicat_env(monkeypatch):
     for var in ("AUDD_API_TOKEN", "ACR_HOST", "ACR_ACCESS_KEY",
                 "ACR_ACCESS_SECRET", "MAGICAT_MUSIC_PROVIDER",
                 "MAGICAT_ACQUISITION_POLICY", "MAGICAT_USE_SEPARATION",
-                "MAGICAT_API_KEY"):
+                "MAGICAT_API_KEY", "SERPAPI_KEY", "MAGICAT_PUBLIC_BASE_URL",
+                "GOOGLE_VISION_API_KEY", "MAGICAT_RIS_PROVIDER",
+                "MAGICAT_CAPCUT_EXPORT"):
         monkeypatch.delenv(var, raising=False)
 
 
