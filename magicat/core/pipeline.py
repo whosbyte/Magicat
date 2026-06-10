@@ -20,7 +20,7 @@ from magicat.modules.report import build_report
 log = logging.getLogger(__name__)
 
 ANALYZERS = ["cut_detection", "audio_analysis", "caption_analysis",
-             "music_acquisition"]
+             "reverse_search", "music_acquisition"]
 EXPORTERS = ["preview_mp4", "report_html", "premiere_resolve_zip"]
 
 ProgressFn = Callable[[str, str], None]
@@ -41,6 +41,7 @@ def load_builtin_modules() -> None:
     import magicat.modules.ingest  # noqa: F401
     import magicat.modules.render_preview  # noqa: F401
     import magicat.modules.report  # noqa: F401
+    import magicat.modules.sources.analyzer  # noqa: F401
 
 
 def run_job(input_arg: str, workdir: Path, job_id: str | None = None,
