@@ -56,7 +56,8 @@ def _isolated_magicat_env(monkeypatch):
     need a var set it explicitly via monkeypatch.setenv (composes fine)."""
     for var in ("AUDD_API_TOKEN", "ACR_HOST", "ACR_ACCESS_KEY",
                 "ACR_ACCESS_SECRET", "MAGICAT_MUSIC_PROVIDER",
-                "MAGICAT_ACQUISITION_POLICY", "MAGICAT_USE_SEPARATION"):
+                "MAGICAT_ACQUISITION_POLICY", "MAGICAT_USE_SEPARATION",
+                "MAGICAT_API_KEY"):
         monkeypatch.delenv(var, raising=False)
 
 
