@@ -15,6 +15,12 @@ def test_separation_disabled_by_env(monkeypatch):
     assert separation.enabled() is False
 
 
+def test_separation_unknown_mode_raises(monkeypatch):
+    monkeypatch.setenv("MAGICAT_USE_SEPARATION", "always")
+    with pytest.raises(ValueError, match="MAGICAT_USE_SEPARATION"):
+        separation.enabled()
+
+
 def test_split_music_bed(long_wav, tmp_path):
     pytest.importorskip(
         "demucs_infer", reason="optional separation extra not installed")

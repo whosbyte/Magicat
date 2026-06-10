@@ -20,6 +20,9 @@ def enabled() -> bool:
     mode = os.environ.get("MAGICAT_USE_SEPARATION", "auto")
     if mode == "never":
         return False
+    if mode != "auto":
+        raise ValueError(
+            f"MAGICAT_USE_SEPARATION must be 'auto' or 'never', got {mode!r}")
     return available()
 
 
