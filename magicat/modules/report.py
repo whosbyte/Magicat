@@ -86,7 +86,8 @@ def _render_html(report: dict[str, Any]) -> str:
     if music["detected"]:
         links = " ".join(
             f'<a class="tag" href="{_esc(url)}">{_esc(name)}</a>'
-            for name, url in music["links"].items())
+            for name, url in music["links"].items()
+            if url.lower().startswith(("http://", "https://")))
         seg = music["used_segment"] or {}
         music_html = (
             f"<p><strong>{_esc(music['title'])}</strong> by "

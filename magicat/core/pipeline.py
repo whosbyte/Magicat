@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 ANALYZERS = ["cut_detection", "audio_analysis", "caption_analysis",
              "music_acquisition"]
-EXPORTERS = ["preview_mp4", "report_html"]   # Task 10 appends the zip
+EXPORTERS = ["preview_mp4", "report_html", "premiere_resolve_zip"]
 
 
 def load_builtin_modules() -> None:
@@ -30,6 +30,7 @@ def load_builtin_modules() -> None:
     import magicat.modules.captions.analyzer  # noqa: F401
     import magicat.modules.cuts_pyscenedetect  # noqa: F401
     import magicat.modules.cuts_transnetv2  # noqa: F401
+    import magicat.modules.export.package  # noqa: F401
     import magicat.modules.ingest  # noqa: F401
     import magicat.modules.render_preview  # noqa: F401
     import magicat.modules.report  # noqa: F401
