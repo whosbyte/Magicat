@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PIL import Image
+
 from magicat.core.registry import register_analyzer
 from magicat.core.workspace import Workspace
 from magicat.manifest.schema import Manifest
@@ -12,6 +14,21 @@ from magicat.modules.captions.ocr import RapidOcrEngine
 from magicat.modules.captions.sampling import sample_frames
 
 SAMPLE_FPS = 5.0
+
+CROP_MARGIN = 0.02   # normalized margin around the caption bbox
+
+
+def save_crop(frame_path: Path, bbox, dest: Path) -> str:
+    """Cut the caption region (plus margin) out of a frame; returns path."""
+    with Image.open(frame_path) as img:
+        width, height = img.size
+        x, y, w, h = bbox
+        box = (max(0, int((x - CROP_MARGIN) * width)),
+               max(0, int((y - CROP_MARGIN) * height)),
+               min(width, int((x + w + CROP_MARGIN) * width)),
+               min(height, int((y + h + CROP_MARGIN) * height)))
+        img.crop(box).save(dest)
+    return str(dest)
 
 
 @register_analyzer
@@ -43,9 +60,19 @@ class CaptionAnalyzer:
         frame_height = None
         if manifest.source.resolution:
             frame_height = int(manifest.source.resolution.split("x")[1])
-        for seg in segments:
+        crops_dir = ws.media_dir / "caption_crops"
+        crops_dir.mkdir(parents=True, exist_ok=True)
+        for i, seg in enumerate(segments):
             mid_t = (seg["t_start"] + seg["t_end"]) / 2
             frame = min(samples, key=lambda s: abs(s.t - mid_t))
+            crop_times = {seg["t_start"], mid_t,
+                          max(seg["t_start"], seg["t_end"] - 1.0 / SAMPLE_FPS)}
+            seg["crops"] = []
+            for j, ct in enumerate(sorted(crop_times)):
+                src_frame = min(samples, key=lambda s: abs(s.t - ct))
+                seg["crops"].append(save_crop(
+                    src_frame.path, seg["bbox"],
+                    crops_dir / f"seg_{i:03d}_{j}.png"))
             x, _, w, h = seg["bbox"]
             center = x + w / 2
             if abs(center - 0.5) < 0.05:
