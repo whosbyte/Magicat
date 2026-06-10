@@ -85,3 +85,21 @@ def test_song_match_defaults():
     assert m.provider_ids == {}
     assert m.links == {}
     assert m.duration_s is None
+
+
+def test_audd_missing_timecode_raises_provider_error(monkeypatch, clip):
+    payload = {"status": "success", "result": {
+        "artist": "A", "title": "T"}}
+    monkeypatch.setattr(providers.requests, "post",
+                        lambda *a, **k: FakeResponse(payload))
+    with pytest.raises(ProviderError, match="timecode"):
+        AudDProvider(api_token="tok").identify(clip)
+
+
+def test_audd_malformed_timecode_raises_provider_error(monkeypatch, clip):
+    payload = {"status": "success", "result": {
+        "artist": "A", "title": "T", "timecode": "02:32.5"}}
+    monkeypatch.setattr(providers.requests, "post",
+                        lambda *a, **k: FakeResponse(payload))
+    with pytest.raises(ProviderError, match="malformed"):
+        AudDProvider(api_token="tok").identify(clip)

@@ -69,6 +69,15 @@ class AudDProvider:
         if not result:
             return None
 
+        timecode = result.get("timecode")
+        if not timecode:
+            raise ProviderError("AudD result missing timecode")
+        try:
+            song_offset_s = parse_timecode(timecode)
+        except ValueError as exc:
+            raise ProviderError(
+                f"AudD malformed timecode {timecode!r}") from exc
+
         links: dict[str, str] = {}
         provider_ids: dict[str, str] = {}
         if result.get("song_link"):
@@ -82,7 +91,7 @@ class AudDProvider:
         return SongMatch(
             title=result["title"],
             artist=result["artist"],
-            song_offset_s=parse_timecode(result["timecode"]),
+            song_offset_s=song_offset_s,
             provider=self.name,
             provider_ids=provider_ids,
             links=links,
