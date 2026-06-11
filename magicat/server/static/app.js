@@ -1,3 +1,16 @@
+const STAGE_LABELS = {
+  ingest: "Downloading video",
+  cut_detection: "Detecting scene cuts",
+  audio_analysis: "Identifying music",
+  caption_analysis: "Reading captions + identifying font",
+  reverse_search: "Searching source footage",
+  music_acquisition: "Fetching music",
+  preview_mp4: "Rendering preview",
+  report_html: "Building report",
+  premiere_resolve_zip: "Packaging Premiere/Resolve project",
+  capcut_zip: "Packaging CapCut draft",
+};
+
 const form = document.getElementById("submit-form");
 const progressCard = document.getElementById("progress-card");
 const progressList = document.getElementById("progress");
@@ -52,7 +65,8 @@ function watch(jobId) {
       items[stage] = document.createElement("li");
       progressList.appendChild(items[stage]);
     }
-    items[stage].textContent = stage;
+    items[stage].textContent = STAGE_LABELS[stage] || stage;
+    items[stage].title = stage;
     items[stage].className = state;
   };
   source.onerror = () => { source.close(); finish(jobId, "done"); };

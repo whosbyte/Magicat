@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from pathlib import Path
 
@@ -30,8 +31,17 @@ def run(
         workdir = Path("jobs") / job_id[:12]   # dir name = id prefix
     else:
         job_id = None                          # explicit dir: run_job names the job
+    start = time.monotonic()
+
+    def show_progress(stage: str, state: str) -> None:
+        if state == "start":
+            typer.echo(f"[{time.monotonic() - start:6.1f}s] {stage}...")
+        else:
+            typer.echo(f"[{time.monotonic() - start:6.1f}s] {stage}: {state}")
+
     try:
-        manifest = run_job(input_arg, workdir, job_id=job_id)
+        manifest = run_job(input_arg, workdir, job_id=job_id,
+                           on_progress=show_progress)
     except Exception as exc:  # ingest failure is fatal (spec section 5)
         typer.echo(f"error: {exc}", err=True)
         raise typer.Exit(code=1)

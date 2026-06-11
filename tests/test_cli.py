@@ -13,6 +13,7 @@ def test_run_command_prints_summary(fixture_video, tmp_path):
     assert result.exit_code == 0
     assert "shots: 3" in result.output
     assert "preview_mp4" in result.output
+    assert "cut_detection: ok" in result.output   # live stage progress
     assert str(workdir.resolve()) in result.output   # absolute manifest path
 
 

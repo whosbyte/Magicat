@@ -13,6 +13,7 @@ drafts always use absolute paths); the zip carries instructions.
 """
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import zipfile
@@ -22,6 +23,8 @@ from magicat.core.interfaces import SkippedExport
 from magicat.core.registry import register_exporter
 from magicat.core.workspace import Workspace
 from magicat.manifest.schema import Manifest
+
+log = logging.getLogger(__name__)
 
 MICROS = 1_000_000
 
@@ -123,16 +126,31 @@ class CapCutExporter:
 
         if manifest.captions.segments:
             script.add_track(cc.TrackType.text)
-            for seg in manifest.captions.segments:
-                start_us = round(seg.t_start * MICROS)
-                duration_us = round((seg.t_end - seg.t_start) * MICROS)
-                style = cc.TextStyle(
-                    color=_parse_fill(seg.style.fill),
-                    align=_ALIGN.get(seg.style.alignment or "", 0))
-                text_segment = cc.TextSegment(
-                    seg.text, cc.trange(start_us, duration_us),
-                    style=style)
-                script.add_segment(text_segment)
+            # pycapcut rejects overlapping segments on one track - clamp/skip
+            # overlaps. Sort by start, then push each segment's start to at
+            # least the previous segment's end.
+            prev_end = 0.0
+            for seg in sorted(manifest.captions.segments,
+                              key=lambda s: s.t_start):
+                t_start = max(seg.t_start, prev_end)
+                if seg.t_end - t_start <= 0:
+                    continue   # fully contained in a prior segment: skip
+                prev_end = seg.t_end
+                start_us = round(t_start * MICROS)
+                duration_us = round((seg.t_end - t_start) * MICROS)
+                try:
+                    style = cc.TextStyle(
+                        color=_parse_fill(seg.style.fill),
+                        align=_ALIGN.get(seg.style.alignment or "", 0))
+                    text_segment = cc.TextSegment(
+                        seg.text, cc.trange(start_us, duration_us),
+                        style=style)
+                    script.add_segment(text_segment)
+                except Exception:
+                    # one pathological caption must not kill the whole draft
+                    log.warning("skipping caption segment %r (%.2f-%.2f)",
+                                seg.text, t_start, seg.t_end, exc_info=True)
+                    continue
 
         script.save()
 

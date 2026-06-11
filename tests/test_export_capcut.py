@@ -135,3 +135,25 @@ def test_pipeline_capcut_flag_off_marks_skipped(fixture_video, tmp_path,
     from magicat.core.pipeline import run_job
     manifest = run_job(str(fixture_video), tmp_path / "job")
     assert manifest.layers_status["capcut_zip"].value == "skipped"
+
+
+def test_overlapping_captions_clamped_not_fatal(fixture_video, tmp_path):
+    m = capcut_manifest(fixture_video, tmp_path)
+    m = m.model_copy(deep=True)
+    m.captions.segments = [
+        type(m.captions.segments[0])(text="A", t_start=1.0, t_end=3.0),
+        type(m.captions.segments[0])(text="B", t_start=2.0, t_end=4.0),  # overlaps A
+        type(m.captions.segments[0])(text="C", t_start=2.2, t_end=2.8),  # inside A/B: skipped
+    ]
+    ws = Workspace(tmp_path / "job")
+    out = CapCutExporter().export(m, ws)
+    draft, _ = load_draft(out)
+    texts = json.dumps(draft["materials"].get("texts", []))
+    assert '"A"' in texts or "A" in texts
+    assert "B" in texts
+    text_track = next(t for t in draft["tracks"] if t["type"] == "text")
+    segs = text_track["segments"]
+    assert len(segs) == 2          # C skipped
+    # B clamped to start at A's end (3.0s)
+    assert segs[1]["target_timerange"]["start"] == 3 * MICROS
+    assert segs[1]["target_timerange"]["duration"] == 1 * MICROS

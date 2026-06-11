@@ -167,6 +167,7 @@ def test_index_page_served(client):
     js = client.get("/static/app.js")
     assert js.status_code == 200
     assert "EventSource" in js.text
+    assert "Reading captions" in js.text   # human-readable stage labels
 
 
 def test_upload_too_large_rejected(client, monkeypatch):
