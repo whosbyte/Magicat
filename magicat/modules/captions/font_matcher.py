@@ -122,6 +122,10 @@ class MatchResult:
 @dataclass
 class FontMatcher:
     fonts: dict[str, str] = field(default_factory=dict)
+    # memoize the prepped candidate mask per (font_path, text): rendering and
+    # normalizing a candidate is the dominant cost, and a job that samples
+    # several segments sharing the same caption text pays it only once.
+    _cache: dict = field(default_factory=dict, repr=False)
 
     @classmethod
     def from_dirs(cls, dirs: list[str],
@@ -143,15 +147,20 @@ class FontMatcher:
         q_mask = to_mask(prep_crop(crop, NORM_H))
         scores: dict[str, float] = {}
         for key, path in self.fonts.items():
-            try:
-                # SYMMETRY: candidate passes through prep_crop exactly like
-                # the query (raw render -> single ink-crop) - see
-                # render_sample docstring for the verified failure mode
-                candidate = prep_crop(render_sample(path, text, NORM_H),
-                                      NORM_H)
-            except Exception:            # unrenderable font file: skip it
-                continue
-            scores[key] = score_pair(q_mask, to_mask(candidate))
+            cache_key = (path, text)
+            c_mask = self._cache.get(cache_key)
+            if c_mask is None:
+                try:
+                    # SYMMETRY: candidate passes through prep_crop exactly
+                    # like the query (raw render -> single ink-crop) - see
+                    # render_sample docstring for the verified failure mode
+                    candidate = prep_crop(render_sample(path, text, NORM_H),
+                                          NORM_H)
+                except Exception:        # unrenderable font file: skip it
+                    continue
+                c_mask = to_mask(candidate)
+                self._cache[cache_key] = c_mask
+            scores[key] = score_pair(q_mask, c_mask)
         if not scores:
             raise RuntimeError("no candidate fonts could be rendered")
         ranked = sorted(scores.items(), key=lambda kv: -kv[1])

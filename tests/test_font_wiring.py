@@ -114,6 +114,91 @@ def test_blank_crop_emits_no_candidates(fixture_video, tmp_path,
     assert style["font_family"] is None
 
 
+from magicat.modules.captions.font_matcher import MatchResult
+from magicat.modules.captions import analyzer as analyzer_mod
+
+
+class CountingMatcher:
+    """Fake matcher that records every identify() call and always returns a
+    confident match for `winner`. Used to prove font ID runs on a SUBSET of
+    segments, not once per segment."""
+
+    def __init__(self, winner="arial"):
+        self.winner = winner
+        self.calls = 0
+
+    def identify(self, crop, text):
+        self.calls += 1
+        return MatchResult(
+            font_key=self.winner, score=0.9, margin=0.3, confident=True,
+            ranked=[(self.winner, 0.9), ("impact", 0.4), ("comic", 0.2)])
+
+
+class FourSegmentEngine:
+    """Emits four distinct, non-overlapping captions on the caption_video
+    timeline (sampled at 5fps -> frames 1..30). Each spans >=3 consecutive
+    frames with a gap, so clustering yields exactly four segments. Texts have
+    different lengths so the longest-text subset selection is exercised."""
+
+    # (1-based frame range inclusive, text). Texts vary in length.
+    _SCRIPT = [
+        (3, 6, "A"),                       # shortest
+        (10, 13, "BBBB CAPTION"),
+        (17, 20, "CC"),
+        (24, 27, "DDDDDD LONGEST CAPTION"),  # longest
+    ]
+
+    def read(self, image):
+        n = int(image.stem.split("_")[1])
+        for lo, hi, text in self._SCRIPT:
+            if lo <= n <= hi:
+                return [OcrLine(text=text,
+                                bbox=(0.20, 0.79, 0.60, 0.07),
+                                confidence=0.95)]
+        return []
+
+
+def test_font_id_runs_on_subset_for_many_segments(caption_video, tmp_path,
+                                                  monkeypatch):
+    # With MAX_FONT_ID_SEGMENTS clamped to 2 and four real segments, the
+    # matcher must be invoked exactly twice (the subset), yet ALL four
+    # segments must carry the same job-level font_candidates.
+    monkeypatch.setattr(analyzer_mod, "MAX_FONT_ID_SEGMENTS", 2)
+    ws = Workspace(tmp_path / "job")
+    m = Manifest(job_id="j", source=Source(file=str(caption_video)))
+    m = apply_patch(m, IngestAnalyzer().run(m, ws))
+    analyzer = CaptionAnalyzer()
+    monkeypatch.setattr(analyzer, "engine_factory",
+                        lambda: FourSegmentEngine())
+    counter = CountingMatcher()
+    monkeypatch.setattr(analyzer, "matcher_factory", lambda: counter)
+    patch = analyzer.run(m, ws)
+    segments = patch["captions"]["segments"]
+    assert len(segments) == 4
+    assert counter.calls == 2          # subset, NOT once per segment
+    cand_sets = [s["style"]["font_candidates"] for s in segments]
+    assert all(c == cand_sets[0] for c in cand_sets)   # one shared font
+    assert cand_sets[0]                                  # non-empty
+
+
+def test_font_vote_applies_winner_to_all_segments(caption_video, tmp_path,
+                                                   monkeypatch):
+    ws = Workspace(tmp_path / "job")
+    m = Manifest(job_id="j", source=Source(file=str(caption_video)))
+    m = apply_patch(m, IngestAnalyzer().run(m, ws))
+    analyzer = CaptionAnalyzer()
+    monkeypatch.setattr(analyzer, "engine_factory",
+                        lambda: FourSegmentEngine())
+    monkeypatch.setattr(analyzer, "matcher_factory",
+                        lambda: CountingMatcher(winner="arial"))
+    patch = analyzer.run(m, ws)
+    segments = patch["captions"]["segments"]
+    assert len(segments) == 4
+    for seg in segments:
+        assert seg["style"]["font_family"] == "arial"
+        assert seg["style"]["font_candidates"][0]["name"] == "arial"
+
+
 def test_no_fonts_available_degrades_gracefully(caption_video, tmp_path,
                                                 monkeypatch):
     ws = Workspace(tmp_path / "job")

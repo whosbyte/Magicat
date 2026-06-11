@@ -26,6 +26,13 @@ CROP_MARGIN = 0.02   # normalized margin around the caption bbox
 
 MIN_FONT_SCORE = 0.05   # below this, the "match" is noise (blank crops)
 
+# Short-form videos virtually always use ONE caption font, so we identify it
+# ONCE per job from a small representative subset (the longest-text segments,
+# which carry the most glyphs and so match most reliably) rather than running
+# the 345-font render-and-compare matcher per segment. The winning font is
+# then applied to every segment. See spec 6.5 step 4.
+MAX_FONT_ID_SEGMENTS = 5
+
 
 def save_crop(frame_path: Path, bbox, dest: Path) -> str:
     """Cut the caption region (plus margin) out of a frame; returns path."""
@@ -104,15 +111,50 @@ class CaptionAnalyzer:
                 "alignment": alignment,
             }
 
-        # font identification per segment: render-and-compare the FIRST crop
-        # against the candidate fonts. Font failures must NEVER fail the
-        # captions layer, so anything that throws degrades to no candidates.
-        matcher = self.matcher_factory()
+        # job-level font identification: captions in a short-form video
+        # virtually always share ONE font, so we render-and-compare only a
+        # small representative subset (the longest-text segments that have
+        # crops) and apply the winner to every segment. Font failures must
+        # NEVER fail the captions layer, so anything that throws degrades to
+        # no candidates.
         for seg in segments:
             seg["style"]["font_family"] = None
             seg["style"]["font_candidates"] = []
-            if not seg["crops"]:
-                continue
+        matcher = self.matcher_factory()
+        font_family, font_candidates = self._identify_job_font(
+            segments, matcher)
+        for seg in segments:
+            seg["style"]["font_family"] = font_family
+            seg["style"]["font_candidates"] = list(font_candidates)
+
+        return {
+            "captions": {"segments": segments},
+            "layers_status": {"captions": "ok"},
+        }
+
+    @staticmethod
+    def _identify_job_font(segments: list[dict], matcher):
+        """Identify the single caption font shared across the job.
+
+        Runs the matcher only on up to MAX_FONT_ID_SEGMENTS representative
+        segments (those with the longest text among segments that have crops),
+        majority-votes the winner, and pools per-font scores into a job-level
+        top-3 candidate list. Returns (font_family, font_candidates) where
+        font_family is non-None only when the winning sample(s) were
+        confident. Degrades to (None, []) when there are no crops, the matcher
+        errors, or every sample is below the noise floor.
+        """
+        with_crops = [s for s in segments if s["crops"]]
+        if not with_crops:
+            return None, []
+        # longest text first -> most glyphs -> most reliable match. Tie-break
+        # on t_start keeps selection deterministic.
+        subset = sorted(with_crops,
+                        key=lambda s: (-len(s["text"]), s["t_start"])
+                        )[:MAX_FONT_ID_SEGMENTS]
+
+        results = []   # (font_key, confident, ranked) for samples above floor
+        for seg in subset:
             try:
                 with PILImage.open(seg["crops"][0]) as crop:
                     result = matcher.identify(crop, seg["text"])
@@ -121,13 +163,34 @@ class CaptionAnalyzer:
                 continue
             if result.score < MIN_FONT_SCORE:
                 continue   # blank/garbage crop: no candidates beat noise
-            seg["style"]["font_candidates"] = [
-                {"name": name, "confidence": round(score, 4)}
-                for name, score in result.ranked[:3]]
-            if result.confident:
-                seg["style"]["font_family"] = result.font_key
+            results.append(result)
 
-        return {
-            "captions": {"segments": segments},
-            "layers_status": {"captions": "ok"},
-        }
+        if not results:
+            return None, []
+
+        # majority vote on the winning font_key; ties broken by highest mean
+        # winning score across the samples that picked that key.
+        votes: dict[str, list[float]] = {}
+        for r in results:
+            votes.setdefault(r.font_key, []).append(r.score)
+        winner = max(votes,
+                     key=lambda k: (len(votes[k]),
+                                    sum(votes[k]) / len(votes[k])))
+
+        # pool candidates: average each font's score across all samples that
+        # ranked it, then take the global top-3.
+        pooled: dict[str, list[float]] = {}
+        for r in results:
+            for name, score in r.ranked:
+                pooled.setdefault(name, []).append(score)
+        ranked = sorted(pooled.items(),
+                        key=lambda kv: -sum(kv[1]) / len(kv[1]))
+        font_candidates = [
+            {"name": name, "confidence": round(sum(s) / len(s), 4)}
+            for name, s in ranked[:3]]
+
+        # font_family is set only when the winning sample(s) were confident.
+        winner_confident = any(r.confident for r in results
+                               if r.font_key == winner)
+        font_family = winner if winner_confident else None
+        return font_family, font_candidates
