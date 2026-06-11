@@ -36,7 +36,7 @@ def test_full_pipeline_through_api(fixture_video, tmp_path):
     assert job["report"]["shots"]["count"] == 3
 
     for name in ("preview.mp4", "report.html", "premiere_resolve.zip",
-                 "manifest.json"):
+                 "manifest.json", "capcut_draft.zip"):
         assert client.get(
             f"/api/jobs/{job_id}/artifacts/{name}").status_code == 200
 

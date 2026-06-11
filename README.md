@@ -3,8 +3,9 @@
 Deconstructs short-form videos (TikTok / Reels / Shorts) into editable
 layers — scene cuts, music, captions — and rebuilds them as NLE projects.
 
-**Status:** M4 — launchable v1: web service with live progress, plus the
-full deconstruction pipeline (cuts, music, captions + fonts, NLE export).
+**Status:** M5 — the complete vision: cuts, music ID + acquisition,
+captions + fonts, source-footage search, Premiere/Resolve AND CapCut
+export, web service with live progress.
 
 Docs: [design spec](docs/superpowers/specs/2026-06-09-magicat-framework-design.md)
 · [M1 plan](docs/superpowers/plans/2026-06-09-m1-skeleton.md)
@@ -66,3 +67,16 @@ $env:MAGICAT_API_KEY and send X-API-Key. Local-first stack (SQLite +
 thread pool + static UI) behind the same seams the cloud deployment
 (Celery/Postgres/S3/Next.js) slots into - see the M4 plan's deviation
 table.
+
+## Source search & CapCut (M5)
+
+Reverse video search (per-shot source-footage links) activates with a
+provider key: `$env:GOOGLE_VISION_API_KEY` (works locally - sends image
+bytes) or `$env:SERPAPI_KEY` + `$env:MAGICAT_PUBLIC_BASE_URL` (Google
+Lens - needs publicly reachable keyframes). Without keys the layer skips.
+
+Every job also exports `capcut_draft.zip` - a CapCut-International draft
+folder (extract into CapCut's drafts directory; see the bundled
+instructions). The format is reverse-engineered and pinned to
+pycapcut 0.0.3 with snapshot tests; disable with
+`$env:MAGICAT_CAPCUT_EXPORT = "0"` if a CapCut update rejects drafts.
