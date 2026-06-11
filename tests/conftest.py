@@ -59,7 +59,7 @@ def _isolated_magicat_env(monkeypatch):
                 "MAGICAT_ACQUISITION_POLICY", "MAGICAT_USE_SEPARATION",
                 "MAGICAT_API_KEY", "SERPAPI_KEY", "MAGICAT_PUBLIC_BASE_URL",
                 "GOOGLE_VISION_API_KEY", "MAGICAT_RIS_PROVIDER",
-                "MAGICAT_CAPCUT_EXPORT"):
+                "MAGICAT_CAPCUT_EXPORT", "MAGICAT_MUSIC_TIMEOUT_S"):
         monkeypatch.delenv(var, raising=False)
 
 

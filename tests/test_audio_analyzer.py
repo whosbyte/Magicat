@@ -5,6 +5,8 @@ from magicat import config
 from magicat.core.workspace import Workspace
 from magicat.manifest.patch import apply_patch
 from magicat.manifest.schema import LayerState, Manifest, Source
+from magicat.modules.audio import analyzer as analyzer_mod
+from magicat.modules.audio import identify as identify_mod
 from magicat.modules.audio.analyzer import AudioAnalyzer
 from magicat.modules.audio.providers import SongMatch
 from magicat.modules.ingest import IngestAnalyzer
@@ -91,6 +93,18 @@ def test_config_acquisition_policy(monkeypatch):
         config.acquisition_policy()
 
 
+def test_config_music_timeout_s(monkeypatch):
+    assert config.music_timeout_s() == 20.0
+    monkeypatch.setenv("MAGICAT_MUSIC_TIMEOUT_S", "5")
+    assert config.music_timeout_s() == 5.0
+    monkeypatch.setenv("MAGICAT_MUSIC_TIMEOUT_S", "bogus")
+    with pytest.raises(ValueError):
+        config.music_timeout_s()
+    monkeypatch.setenv("MAGICAT_MUSIC_TIMEOUT_S", "-5")
+    with pytest.raises(ValueError):
+        config.music_timeout_s()
+
+
 class DeadProvider:
     name = "dead"
 
@@ -106,6 +120,87 @@ def test_dead_providers_mark_layer_failed(ingested, monkeypatch):
                         lambda: [DeadProvider(), DeadProvider()])
     patch = analyzer.run(m, ws)
     assert patch == {"layers_status": {"music": "failed"}}
+
+
+class _Clock:
+    """Shared fake monotonic clock so the analyzer's deadline arithmetic and
+    the identify-loop's deadline check agree - fully deterministic, no sleeps.
+    """
+
+    def __init__(self, start=1000.0):
+        self.now = start
+
+    def __call__(self):
+        return self.now
+
+
+def _patch_clock(monkeypatch, budget):
+    """Patch both modules' time.monotonic onto one fake clock and pin the
+    budget; return the clock so a provider can advance it past the deadline."""
+    clock = _Clock()
+    monkeypatch.setattr(analyzer_mod.time, "monotonic", clock)
+    monkeypatch.setattr(identify_mod.time, "monotonic", clock)
+    monkeypatch.setattr(analyzer_mod.config, "music_timeout_s",
+                        lambda: budget)
+    return clock
+
+
+def test_timeout_with_zero_matches_skips_layer(ingested, monkeypatch):
+    # The 6s fixture yields one window. The first provider finds nothing and
+    # burns the whole budget; the analyzer's pre-provider deadline check then
+    # fires before the fallback provider runs - no match, budget gone -> skip.
+    m, ws = ingested
+    clock = _patch_clock(monkeypatch, budget=5.0)
+    deadline = clock.now + 5.0
+
+    class SlowNoMatchProvider:
+        name = "slow"
+
+        def identify(self, clip):
+            clock.now = deadline + 1.0   # blow past the budget on first call
+            return None
+
+    class NeverCalledProvider:
+        name = "never"
+
+        def identify(self, clip):   # pragma: no cover - must never run
+            raise AssertionError("fallback provider ran past the deadline")
+
+    analyzer = AudioAnalyzer()
+    monkeypatch.setattr(analyzer, "provider_factory",
+                        lambda: [SlowNoMatchProvider(), NeverCalledProvider()])
+    patch = analyzer.run(m, ws)
+    assert patch == {"layers_status": {"music": "skipped"}}
+
+
+def test_partial_match_before_timeout_is_ok(ingested, monkeypatch):
+    # A window matches, then the budget expires (the provider burns it on the
+    # first call). A match found before the deadline still counts: the timeout
+    # rung must NOT downgrade a real detection - detected True, layer ok.
+    clock = _patch_clock(monkeypatch, budget=5.0)
+    deadline = clock.now + 5.0
+    m, ws = ingested
+
+    class MatchThenTimeoutProvider:
+        name = "fake"
+
+        def __init__(self):
+            self.calls = 0
+
+        def identify(self, clip):
+            self.calls += 1
+            clock.now = deadline + 1.0   # any subsequent window is skipped
+            return SongMatch(title="Fixture Song", artist="Fixture Artist",
+                             song_offset_s=30.0, provider="fake",
+                             links={"song_link": "https://example.com/s"})
+
+    analyzer = AudioAnalyzer()
+    monkeypatch.setattr(analyzer, "provider_factory",
+                        lambda: [MatchThenTimeoutProvider()])
+    patch = analyzer.run(m, ws)
+    assert patch["audio"]["music"]["detected"] is True
+    assert patch["audio"]["music"]["title"] == "Fixture Song"
+    assert patch["layers_status"] == {"music": "ok"}
 
 
 def test_pipeline_includes_audio_analysis(fixture_video, tmp_path):

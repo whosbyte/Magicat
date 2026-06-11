@@ -62,7 +62,8 @@ class AudDProvider:
                 "https://api.audd.io/",
                 data={"api_token": self.api_token, "return": "spotify"},
                 files={"file": f},
-                timeout=30,
+                # bounded so one hung call can't blow far past MAGICAT_MUSIC_TIMEOUT_S
+                timeout=10,
             )
         resp.raise_for_status()
         data = resp.json()
@@ -147,7 +148,8 @@ class ACRCloudProvider:
                 "data_type": "audio",
                 "signature_version": "1",
             },
-            timeout=15,
+            # bounded so one hung call can't blow far past MAGICAT_MUSIC_TIMEOUT_S
+            timeout=10,
         )
         resp.raise_for_status()
         data = resp.json()

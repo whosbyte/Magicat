@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import statistics
+import time
 from typing import Any
 
 from magicat.modules.audio.extract import AudioWindow
@@ -27,23 +28,35 @@ ANCHOR_TOLERANCE_S = 5.0
 
 
 def recognize_windows(windows: list[AudioWindow],
-                      provider: MusicIdProvider
-                      ) -> tuple[list[SongMatch | None], int]:
+                      provider: MusicIdProvider,
+                      deadline: float | None = None
+                      ) -> tuple[list[SongMatch | None], int, bool]:
     """Identify every window; provider errors degrade to no-match.
 
-    Returns (matches, error_count) so the caller can tell silence
-    (no match) apart from a dead provider (all windows errored).
+    `deadline` is an optional time.monotonic timestamp: before each provider
+    call, if the budget is exhausted we stop and return only the attempted
+    prefix (align() zips, so the unattempted tail is simply ignored).
+
+    Returns (matches, error_count, timed_out): error_count lets the caller
+    tell silence (no match) apart from a dead provider (all windows errored);
+    timed_out reports whether we stopped early because the budget expired.
     """
     results: list[SongMatch | None] = []
     errors = 0
-    for window in windows:
+    timed_out = False
+    for index, window in enumerate(windows):
+        if deadline is not None and time.monotonic() >= deadline:
+            log.warning("music identification budget exhausted after "
+                        "window %d/%d", index, len(windows))
+            timed_out = True
+            break
         try:
             results.append(provider.identify(window.path))
         except (ProviderError, OSError) as exc:
             log.warning("window at %.1fs failed: %s", window.t_start, exc)
             results.append(None)
             errors += 1
-    return results, errors
+    return results, errors, timed_out
 
 
 def align(windows: list[AudioWindow], matches: list[SongMatch | None],

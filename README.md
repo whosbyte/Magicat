@@ -38,6 +38,7 @@ Music identification needs a provider key (set one of):
 Without a key the music layer is skipped; captions always run.
 Acquisition policy: `$env:MAGICAT_ACQUISITION_POLICY = "always" | "licensed_only" | "link_only"` (default `always`).
 Note: link_only still performs network probes (to collect links); it only skips the download itself.
+`$env:MAGICAT_MUSIC_TIMEOUT_S` (default `20`) — wall-clock budget for music identification; on expiry the layer is skipped and the job continues. Overshoot is bounded by one in-flight HTTP call (<= ~10 s).
 Optional speech/music separation for noisy voiceovers: `pip install -e .[separation]`.
 
 ## Project export (M3)
