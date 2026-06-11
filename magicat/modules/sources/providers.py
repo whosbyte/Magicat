@@ -96,7 +96,10 @@ class VisionWebProvider:
             }]},
             timeout=30)
         resp.raise_for_status()
-        body = resp.json()["responses"][0]
+        try:
+            body = resp.json()["responses"][0]
+        except (KeyError, IndexError, ValueError) as exc:
+            raise ProviderError(f"GCV malformed response: {exc!r}") from exc
         if "error" in body:
             raise ProviderError(f"GCV: {body['error']['message']}")
         detection = body.get("webDetection", {})

@@ -90,6 +90,21 @@ def test_provider_errors_degrade_per_shot(tmp_path, monkeypatch):
     assert patch["layers_status"] == {"source_matches": "ok"}
 
 
+def test_all_provider_calls_dead_marks_layer_failed(tmp_path, monkeypatch):
+    class DeadProvider:
+        name = "dead"
+
+        def search(self, keyframe):
+            raise ProviderError("bad key")
+
+    ws = Workspace(tmp_path / "job")
+    analyzer = SourceMatchAnalyzer()
+    monkeypatch.setattr(analyzer, "provider_factory",
+                        lambda: [DeadProvider()])
+    patch = analyzer.run(manifest_with_shots(tmp_path), ws)
+    assert patch == {"layers_status": {"source_matches": "failed"}}
+
+
 def test_multi_provider_results_merged_and_ranked(tmp_path, monkeypatch):
     class P1:
         name = "p1"

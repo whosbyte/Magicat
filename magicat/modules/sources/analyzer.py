@@ -33,14 +33,20 @@ class SourceMatchAnalyzer:
             return {"layers_status": {"source_matches": "skipped"}}
 
         source_matches = []
+        any_success = False
+        any_attempt = False
         for shot in manifest.shots:
             matches = []
             if shot.keyframes:
                 # the middle keyframe is the shot's most representative frame
                 keyframe = Path(shot.keyframes[len(shot.keyframes) // 2])
                 for provider in providers:
+                    any_attempt = True
                     try:
                         matches.extend(provider.search(keyframe))
+                        # success = the CALL returned (even an empty list);
+                        # only ERRORS count as a dead provider
+                        any_success = True
                     except (ProviderError, OSError) as exc:
                         log.warning("reverse search failed for %s via %s: %s",
                                     shot.id, provider.name, exc)
@@ -54,5 +60,10 @@ class SourceMatchAnalyzer:
                     "score": m.score,
                 } for m in ranked],
             })
+
+        if any_attempt and not any_success:
+            # every call errored (bad key, quota): report a failure, not a
+            # confident "no sources found" - mirrors the music layer
+            return {"layers_status": {"source_matches": "failed"}}
         return {"source_matches": source_matches,
                 "layers_status": {"source_matches": "ok"}}

@@ -112,6 +112,7 @@ def test_caption_style_mapped(fixture_video, tmp_path):
     content = json.dumps(text_material)
     # fill #FDFDFD -> ~0.9922 per channel; alignment center
     assert "0.992" in content
+    assert text_material.get("alignment") == 1   # center
 
 
 def test_no_shots_raises_value_error(tmp_path):

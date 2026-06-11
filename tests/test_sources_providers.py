@@ -116,6 +116,13 @@ def test_vision_provider_response_error_raises(monkeypatch, keyframe):
         VisionWebProvider(api_key="vk").search(keyframe)
 
 
+def test_vision_provider_malformed_response_raises(monkeypatch, keyframe):
+    monkeypatch.setattr(providers.requests, "post",
+                        lambda *a, **k: FakeResponse({"unexpected": True}))
+    with pytest.raises(ProviderError, match="malformed"):
+        VisionWebProvider(api_key="vk").search(keyframe)
+
+
 def test_vision_provider_empty_detection_returns_no_matches(monkeypatch,
                                                             keyframe):
     monkeypatch.setattr(
