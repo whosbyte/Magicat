@@ -19,6 +19,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from magicat import config
+from magicat.core.download_guard import timeout_hook
 from magicat.core.ffmpeg import run_ffmpeg
 from magicat.core.registry import register_analyzer
 from magicat.core.workspace import Workspace
@@ -62,6 +63,9 @@ def _ydl_opts(out_dir: Path) -> dict:
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
+        "socket_timeout": 20,
+        "retries": 3,
+        "fragment_retries": 3,
     }
 
 
@@ -73,7 +77,8 @@ def probe_query(query: str) -> Candidate | None:
     source = "soundcloud" if query.startswith("scsearch") else "youtube"
     try:
         with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True,
-                               "noplaylist": True}) as ydl:
+                               "noplaylist": True, "socket_timeout": 20,
+                               "retries": 3, "fragment_retries": 3}) as ydl:
             info = ydl.extract_info(query, download=False)
     except DownloadError as exc:
         log.warning("probe failed for %s: %s", query, exc)
@@ -98,10 +103,18 @@ def probe_query(query: str) -> Candidate | None:
 
 
 def download_candidate(candidate: Candidate, out_dir: Path) -> Path:
-    """Phase 2: download + extract MP3; returns the final audio path."""
+    """Phase 2: download + extract MP3; returns the final audio path.
+
+    The wall-clock watchdog aborts a throttled/stalled download (socket_timeout
+    cannot - a dribbling stream never times out a read). DownloadTimeout is
+    caught by the existing `except Exception` around download/trim in run(),
+    which degrades the acquisition layer to 'failed' instead of hanging.
+    """
     import yt_dlp
 
-    with yt_dlp.YoutubeDL(_ydl_opts(out_dir)) as ydl:
+    opts = _ydl_opts(out_dir)
+    opts["progress_hooks"] = [timeout_hook(config.acquisition_timeout_s())]
+    with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(candidate.url, download=True)
         if "entries" in info:
             info = info["entries"][0]

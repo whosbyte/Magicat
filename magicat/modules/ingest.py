@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from magicat import config
+from magicat.core.download_guard import DownloadTimeout, timeout_hook
 from magicat.core.ffmpeg import run_ffprobe
 from magicat.core.registry import register_analyzer
 from magicat.core.workspace import Workspace
@@ -26,14 +28,45 @@ def detect_platform(url: str) -> str | None:
 
 
 def download(url: str, dest_dir: Path) -> Path:
-    """Fetch a video with yt-dlp; returns the downloaded file path."""
-    import yt_dlp
+    """Fetch a video with yt-dlp; returns the downloaded file path.
 
+    Guarded against the freeze-forever case: socket_timeout bounds a single
+    stalled read, but a throttled YouTube DASH stream keeps dribbling bytes so
+    no read ever times out. The progress_hooks watchdog enforces a wall-clock
+    budget - the only reliable total abort (verified empirically). The hook's
+    DownloadTimeout propagates as-is from the file downloader; we also catch
+    DownloadError defensively in case an extraction-phase failure wraps it.
+    """
+    import yt_dlp
+    from yt_dlp.utils import DownloadError
+
+    budget = config.ingest_timeout_s()
     template = str(dest_dir / "download.%(ext)s")
-    with yt_dlp.YoutubeDL({"outtmpl": template, "format": "mp4/best",
-                           "quiet": True}) as ydl:
-        info = ydl.extract_info(url, download=True)
-        return Path(ydl.prepare_filename(info))
+    ydl_opts = {
+        "outtmpl": template,
+        "format": "mp4/best",
+        "quiet": True,
+        "socket_timeout": 20,
+        "retries": 3,
+        "fragment_retries": 3,
+        "progress_hooks": [timeout_hook(budget)],
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            return Path(ydl.prepare_filename(info))
+    except (DownloadTimeout, DownloadError) as exc:
+        # DownloadTimeout: our watchdog fired (the common case). DownloadError
+        # may wrap a DownloadTimeout raised on a non-file-downloader path.
+        timed_out = isinstance(exc, DownloadTimeout) or isinstance(
+            getattr(exc, "__cause__", None) or getattr(exc, "__context__", None),
+            DownloadTimeout)
+        if timed_out:
+            raise RuntimeError(
+                f"video download timed out after {budget:.0f}s - likely "
+                "YouTube throttling; install a JavaScript runtime "
+                "(winget install DenoLand.Deno) - see README") from exc
+        raise
 
 
 def normalize(src: Path, dest: Path) -> None:

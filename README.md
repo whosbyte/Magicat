@@ -14,6 +14,12 @@ Docs: [design spec](docs/superpowers/specs/2026-06-09-magicat-framework-design.m
 
 Prereqs: Python 3.11+, ffmpeg + ffprobe on PATH.
 
+For reliable YouTube downloads install a JavaScript runtime:
+`winget install DenoLand.Deno` (yt-dlp needs it to solve YouTube's nsig
+challenge and avoid throttling). Node.js on PATH also works. Without one,
+throttled DASH downloads crawl at KB/s; the ingest watchdog
+(`MAGICAT_INGEST_TIMEOUT_S`) aborts them rather than hanging forever.
+
     python -m venv .venv
     .venv/Scripts/python -m pip install -e .[dev]
     .venv/Scripts/python -m pytest
@@ -39,6 +45,14 @@ Without a key the music layer is skipped; captions always run.
 Acquisition policy: `$env:MAGICAT_ACQUISITION_POLICY = "always" | "licensed_only" | "link_only"` (default `always`).
 Note: link_only still performs network probes (to collect links); it only skips the download itself.
 `$env:MAGICAT_MUSIC_TIMEOUT_S` (default `20`) — wall-clock budget for music identification; on expiry the layer is skipped and the job continues. Overshoot is bounded by one in-flight HTTP call (<= ~10 s).
+
+Download watchdog budgets (a stalled/throttled yt-dlp download dribbles bytes
+forever, so `socket_timeout` alone can't bound it — these wall-clock hooks do):
+`$env:MAGICAT_INGEST_TIMEOUT_S` (default `120`) — budget for the source video
+download; on expiry ingest fails with an actionable error (install a JS runtime).
+`$env:MAGICAT_ACQUISITION_TIMEOUT_S` (default `90`) — budget for one music
+download; on expiry the acquisition layer degrades to `failed` and the job
+continues.
 Optional speech/music separation for noisy voiceovers: `pip install -e .[separation]`.
 
 ## Project export (M3)
