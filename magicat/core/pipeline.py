@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Callable
 
 from magicat.core import registry
+from magicat.core.interfaces import SkippedExport
 from magicat.core.workspace import Workspace
 from magicat.manifest.patch import apply_patch
 from magicat.manifest.schema import Manifest, Source
@@ -21,7 +22,8 @@ log = logging.getLogger(__name__)
 
 ANALYZERS = ["cut_detection", "audio_analysis", "caption_analysis",
              "reverse_search", "music_acquisition"]
-EXPORTERS = ["preview_mp4", "report_html", "premiere_resolve_zip"]
+EXPORTERS = ["preview_mp4", "report_html", "premiere_resolve_zip",
+             "capcut_zip"]
 
 ProgressFn = Callable[[str, str], None]
 
@@ -37,6 +39,7 @@ def load_builtin_modules() -> None:
     import magicat.modules.captions.analyzer  # noqa: F401
     import magicat.modules.cuts_pyscenedetect  # noqa: F401
     import magicat.modules.cuts_transnetv2  # noqa: F401
+    import magicat.modules.export.capcut  # noqa: F401
     import magicat.modules.export.package  # noqa: F401
     import magicat.modules.ingest  # noqa: F401
     import magicat.modules.render_preview  # noqa: F401
@@ -96,6 +99,11 @@ def run_job(input_arg: str, workdir: Path, job_id: str | None = None,
                 "layers_status": {fmt: "ok"},
             })
             progress(fmt, "ok")
+        except SkippedExport:
+            log.info("exporter %s skipped (disabled)", fmt)
+            manifest = apply_patch(
+                manifest, {"layers_status": {fmt: "skipped"}})
+            progress(fmt, "skipped")
         except Exception:
             log.exception("exporter %s failed", fmt)
             manifest = apply_patch(

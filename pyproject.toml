@@ -16,6 +16,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "python-multipart>=0.0.9",
+    "pycapcut==0.0.3",
 ]
 
 [project.optional-dependencies]

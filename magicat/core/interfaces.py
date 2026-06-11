@@ -9,7 +9,11 @@ from magicat.core.workspace import Workspace
 from magicat.manifest.patch import ManifestPatch
 from magicat.manifest.schema import Manifest
 
-__all__ = ["Analyzer", "Exporter", "ManifestPatch"]
+__all__ = ["Analyzer", "Exporter", "ManifestPatch", "SkippedExport"]
+
+
+class SkippedExport(Exception):
+    """An exporter declining to run (feature flag off) - NOT a failure."""
 
 
 @runtime_checkable
