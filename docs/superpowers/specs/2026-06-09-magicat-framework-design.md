@@ -157,7 +157,7 @@ Config `acquisition_policy: always | licensed_only | link_only`. Launch policy: 
 5. Style extraction: fill/stroke color, shadow, size, alignment.
 
 ### 6.6 Reverse video search (v2, feature-flagged)
-Keyframes → Google Lens (via SerpAPI) + Bing Visual Search → candidate URLs per shot → re-ranked by CLIP embedding similarity against the keyframe. The manifest slot (`source_matches`) and UI panel exist from day one so this drops in without schema changes.
+Keyframes → provider chain → candidate URLs per shot → ranked + domain-deduped. *(As-built note, M5 2026-06-11: Bing Visual Search was retired by Microsoft in Aug 2025 — the shipped providers are SerpAPI Google Lens (needs public keyframe hosting) and Google Cloud Vision WEB_DETECTION (local bytes); CLIP re-ranking is deferred to a post-v1 optional extra — see the M5 plan.)* The manifest slot (`source_matches`) and UI panel exist from day one so this drops in without schema changes.
 
 ## 7. Assembly & Exporters
 
