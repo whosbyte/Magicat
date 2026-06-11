@@ -45,13 +45,18 @@ def fake_pipeline(input_arg, workdir, job_id=None, on_progress=None):
 
 
 @pytest.fixture()
-def client(tmp_path, monkeypatch):
+def client_and_store(tmp_path, monkeypatch):
     monkeypatch.delenv("MAGICAT_API_KEY", raising=False)
     store = JobStore(tmp_path / "jobs.db")
     runner = InlineRunner(store, fake_pipeline)
     app = create_app(store=store, runner=runner,
                      jobs_root=tmp_path / "jobs")
-    return TestClient(app)
+    return TestClient(app), store
+
+
+@pytest.fixture()
+def client(client_and_store):
+    return client_and_store[0]
 
 
 def test_healthz(client):
@@ -170,3 +175,25 @@ def test_upload_too_large_rejected(client, monkeypatch):
     r = client.post("/api/jobs",
                     files={"file": ("big.mp4", b"x" * 64, "video/mp4")})
     assert r.status_code == 413
+
+
+def test_capcut_artifact_allowlisted_but_absent_404(client):
+    job_id = client.post("/api/jobs",
+                         json={"url": "https://x/v/1"}).json()["job_id"]
+    # fake pipeline doesn't create it: allowlisted name, absent file -> 404
+    r = client.get(f"/api/jobs/{job_id}/artifacts/capcut_draft.zip")
+    assert r.status_code == 404
+
+
+def test_capcut_artifact_served_when_present(client_and_store):
+    client, store = client_and_store
+    job_id = client.post("/api/jobs",
+                         json={"url": "https://x/v/1"}).json()["job_id"]
+    job = store.get_job(job_id)
+    from pathlib import Path
+    exports = Path(job.workdir) / "exports"
+    exports.mkdir(parents=True, exist_ok=True)
+    (exports / "capcut_draft.zip").write_bytes(b"PK\x05\x06" + b"\x00" * 18)
+    r = client.get(f"/api/jobs/{job_id}/artifacts/capcut_draft.zip")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/zip"

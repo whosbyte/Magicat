@@ -93,6 +93,7 @@ async function finish(jobId, state) {
   document.getElementById("downloads").innerHTML =
     `<a href="/api/jobs/${jobId}/artifacts/preview.mp4" download>Preview MP4</a>
      <a href="/api/jobs/${jobId}/artifacts/premiere_resolve.zip" download>Premiere/Resolve project</a>
+     <a href="/api/jobs/${jobId}/artifacts/capcut_draft.zip" download>CapCut draft</a>
      <a href="/api/jobs/${jobId}/artifacts/report.html" target="_blank">Report</a>
      <a href="/api/jobs/${jobId}/artifacts/manifest.json" download>Manifest</a>`;
 }

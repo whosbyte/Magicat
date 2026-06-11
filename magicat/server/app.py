@@ -34,6 +34,7 @@ ARTIFACTS = {
     "report.html": ("exports/report.html", "text/html"),
     "premiere_resolve.zip": ("exports/premiere_resolve.zip",
                              "application/zip"),
+    "capcut_draft.zip": ("exports/capcut_draft.zip", "application/zip"),
     "manifest.json": ("manifest.json", "application/json"),
 }
 

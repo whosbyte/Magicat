@@ -103,6 +103,17 @@ def test_draft_includes_caption_text(fixture_video, tmp_path):
     assert "HELLO WORLD" in texts
 
 
+def test_caption_style_mapped(fixture_video, tmp_path):
+    ws = Workspace(tmp_path / "job")
+    out = CapCutExporter().export(capcut_manifest(fixture_video, tmp_path),
+                                  ws)
+    draft, _ = load_draft(out)
+    text_material = draft["materials"]["texts"][0]
+    content = json.dumps(text_material)
+    # fill #FDFDFD -> ~0.9922 per channel; alignment center
+    assert "0.992" in content
+
+
 def test_no_shots_raises_value_error(tmp_path):
     ws = Workspace(tmp_path / "job")
     m = Manifest(job_id="j", source=Source(file="x.mp4"))

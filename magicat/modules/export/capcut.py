@@ -25,6 +25,29 @@ from magicat.manifest.schema import Manifest
 
 MICROS = 1_000_000
 
+# CapCut text alignment is an int enum (pycapcut TextStyle.align):
+# 0=left, 1=center, 2=right (verified in
+# .venv/Lib/site-packages/pycapcut/text_segment.py docstring).
+_ALIGN = {"left": 0, "center": 1, "right": 2}
+
+
+def _parse_fill(fill: str | None) -> tuple[float, float, float]:
+    """Map a manifest '#RRGGBB' fill to an RGB float triple in [0, 1].
+
+    Defaults to white on a missing or unparseable value (pycapcut's own
+    TextStyle default), so a malformed caption colour never breaks export.
+    """
+    if not fill:
+        return (1.0, 1.0, 1.0)
+    s = fill.lstrip("#")
+    if len(s) != 6:
+        return (1.0, 1.0, 1.0)
+    try:
+        r, g, b = (int(s[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    except ValueError:
+        return (1.0, 1.0, 1.0)
+    return (r, g, b)
+
 INSTRUCTIONS = """Magicat CapCut draft
 =====================
 
@@ -103,8 +126,12 @@ class CapCutExporter:
             for seg in manifest.captions.segments:
                 start_us = round(seg.t_start * MICROS)
                 duration_us = round((seg.t_end - seg.t_start) * MICROS)
+                style = cc.TextStyle(
+                    color=_parse_fill(seg.style.fill),
+                    align=_ALIGN.get(seg.style.alignment or "", 0))
                 text_segment = cc.TextSegment(
-                    seg.text, cc.trange(start_us, duration_us))
+                    seg.text, cc.trange(start_us, duration_us),
+                    style=style)
                 script.add_segment(text_segment)
 
         script.save()
