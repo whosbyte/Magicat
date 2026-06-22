@@ -1,0 +1,433 @@
+{
+  "n_rows": 768,
+  "class_counts": {
+    "0": 500,
+    "1": 268
+  },
+  "missing_after_zero": {
+    "Glucose": {
+      "zeros": 5,
+      "pct": 0.7
+    },
+    "BloodPressure": {
+      "zeros": 35,
+      "pct": 4.6
+    },
+    "SkinThickness": {
+      "zeros": 227,
+      "pct": 29.6
+    },
+    "Insulin": {
+      "zeros": 374,
+      "pct": 48.7
+    },
+    "BMI": {
+      "zeros": 11,
+      "pct": 1.4
+    }
+  },
+  "imputation_medians": {
+    "Glucose": 117.0,
+    "BloodPressure": 72.0,
+    "SkinThickness": 29.0,
+    "Insulin": 125.0,
+    "BMI": 32.3
+  },
+  "describe": {
+    "Pregnancies": {
+      "count": 768.0,
+      "mean": 3.85,
+      "std": 3.37,
+      "min": 0.0,
+      "25%": 1.0,
+      "50%": 3.0,
+      "75%": 6.0,
+      "max": 17.0
+    },
+    "Glucose": {
+      "count": 768.0,
+      "mean": 121.66,
+      "std": 30.44,
+      "min": 44.0,
+      "25%": 99.75,
+      "50%": 117.0,
+      "75%": 140.25,
+      "max": 199.0
+    },
+    "BloodPressure": {
+      "count": 768.0,
+      "mean": 72.39,
+      "std": 12.1,
+      "min": 24.0,
+      "25%": 64.0,
+      "50%": 72.0,
+      "75%": 80.0,
+      "max": 122.0
+    },
+    "SkinThickness": {
+      "count": 768.0,
+      "mean": 29.11,
+      "std": 8.79,
+      "min": 7.0,
+      "25%": 25.0,
+      "50%": 29.0,
+      "75%": 32.0,
+      "max": 99.0
+    },
+    "Insulin": {
+      "count": 768.0,
+      "mean": 140.67,
+      "std": 86.38,
+      "min": 14.0,
+      "25%": 121.5,
+      "50%": 125.0,
+      "75%": 127.25,
+      "max": 846.0
+    },
+    "BMI": {
+      "count": 768.0,
+      "mean": 32.46,
+      "std": 6.88,
+      "min": 18.2,
+      "25%": 27.5,
+      "50%": 32.3,
+      "75%": 36.6,
+      "max": 67.1
+    },
+    "DiabetesPedigreeFunction": {
+      "count": 768.0,
+      "mean": 0.47,
+      "std": 0.33,
+      "min": 0.08,
+      "25%": 0.24,
+      "50%": 0.37,
+      "75%": 0.63,
+      "max": 2.42
+    },
+    "Age": {
+      "count": 768.0,
+      "mean": 33.24,
+      "std": 11.76,
+      "min": 21.0,
+      "25%": 24.0,
+      "50%": 29.0,
+      "75%": 41.0,
+      "max": 81.0
+    },
+    "Outcome": {
+      "count": 768.0,
+      "mean": 0.35,
+      "std": 0.48,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 1.0,
+      "max": 1.0
+    }
+  },
+  "corr_with_outcome": {
+    "Pregnancies": 0.222,
+    "Glucose": 0.493,
+    "BloodPressure": 0.166,
+    "SkinThickness": 0.215,
+    "Insulin": 0.204,
+    "BMI": 0.312,
+    "DiabetesPedigreeFunction": 0.174,
+    "Age": 0.238
+  },
+  "root_split": {
+    "feature": "Glucose",
+    "threshold": 127.5
+  },
+  "tree_feature_importance": {
+    "Glucose": 0.6074,
+    "BMI": 0.2421,
+    "Age": 0.1418,
+    "Insulin": 0.0062,
+    "Pregnancies": 0.0025,
+    "BloodPressure": 0.0,
+    "SkinThickness": 0.0,
+    "DiabetesPedigreeFunction": 0.0
+  },
+  "tree_main": {
+    "accuracy": 0.7143,
+    "precision": 0.5773,
+    "recall": 0.6914,
+    "f1": 0.6292,
+    "auc": 0.7878,
+    "confusion": [
+      [
+        109,
+        41
+      ],
+      [
+        25,
+        56
+      ]
+    ]
+  },
+  "knn_main": {
+    "accuracy": 0.7576,
+    "precision": 0.6923,
+    "recall": 0.5556,
+    "f1": 0.6164,
+    "auc": 0.7872,
+    "confusion": [
+      [
+        130,
+        20
+      ],
+      [
+        36,
+        45
+      ]
+    ]
+  },
+  "ten_splits": [
+    {
+      "split": 1,
+      "seed": 1,
+      "tree_accuracy": 0.7143,
+      "tree_precision": 0.5773,
+      "tree_recall": 0.6914,
+      "tree_f1": 0.6292,
+      "tree_auc": 0.7878,
+      "knn_accuracy": 0.7576,
+      "knn_precision": 0.6923,
+      "knn_recall": 0.5556,
+      "knn_f1": 0.6164,
+      "knn_auc": 0.7872
+    },
+    {
+      "split": 2,
+      "seed": 2,
+      "tree_accuracy": 0.7229,
+      "tree_precision": 0.6604,
+      "tree_recall": 0.4321,
+      "tree_f1": 0.5224,
+      "tree_auc": 0.7884,
+      "knn_accuracy": 0.7403,
+      "knn_precision": 0.6522,
+      "knn_recall": 0.5556,
+      "knn_f1": 0.6,
+      "knn_auc": 0.7796
+    },
+    {
+      "split": 3,
+      "seed": 3,
+      "tree_accuracy": 0.7359,
+      "tree_precision": 0.602,
+      "tree_recall": 0.7284,
+      "tree_f1": 0.6592,
+      "tree_auc": 0.7852,
+      "knn_accuracy": 0.7359,
+      "knn_precision": 0.6316,
+      "knn_recall": 0.5926,
+      "knn_f1": 0.6115,
+      "knn_auc": 0.8037
+    },
+    {
+      "split": 4,
+      "seed": 4,
+      "tree_accuracy": 0.7359,
+      "tree_precision": 0.6,
+      "tree_recall": 0.7407,
+      "tree_f1": 0.663,
+      "tree_auc": 0.7877,
+      "knn_accuracy": 0.671,
+      "knn_precision": 0.5263,
+      "knn_recall": 0.6173,
+      "knn_f1": 0.5682,
+      "knn_auc": 0.7591
+    },
+    {
+      "split": 5,
+      "seed": 5,
+      "tree_accuracy": 0.7359,
+      "tree_precision": 0.6316,
+      "tree_recall": 0.5926,
+      "tree_f1": 0.6115,
+      "tree_auc": 0.782,
+      "knn_accuracy": 0.71,
+      "knn_precision": 0.5875,
+      "knn_recall": 0.5802,
+      "knn_f1": 0.5839,
+      "knn_auc": 0.7582
+    },
+    {
+      "split": 6,
+      "seed": 6,
+      "tree_accuracy": 0.7532,
+      "tree_precision": 0.875,
+      "tree_recall": 0.3457,
+      "tree_f1": 0.4956,
+      "tree_auc": 0.8127,
+      "knn_accuracy": 0.7273,
+      "knn_precision": 0.65,
+      "knn_recall": 0.4815,
+      "knn_f1": 0.5532,
+      "knn_auc": 0.7884
+    },
+    {
+      "split": 7,
+      "seed": 7,
+      "tree_accuracy": 0.7316,
+      "tree_precision": 0.6418,
+      "tree_recall": 0.5309,
+      "tree_f1": 0.5811,
+      "tree_auc": 0.804,
+      "knn_accuracy": 0.7489,
+      "knn_precision": 0.6575,
+      "knn_recall": 0.5926,
+      "knn_f1": 0.6234,
+      "knn_auc": 0.7954
+    },
+    {
+      "split": 8,
+      "seed": 8,
+      "tree_accuracy": 0.6797,
+      "tree_precision": 0.5327,
+      "tree_recall": 0.7037,
+      "tree_f1": 0.6064,
+      "tree_auc": 0.7194,
+      "knn_accuracy": 0.7316,
+      "knn_precision": 0.6203,
+      "knn_recall": 0.6049,
+      "knn_f1": 0.6125,
+      "knn_auc": 0.7465
+    },
+    {
+      "split": 9,
+      "seed": 9,
+      "tree_accuracy": 0.7749,
+      "tree_precision": 0.6355,
+      "tree_recall": 0.8395,
+      "tree_f1": 0.7234,
+      "tree_auc": 0.8226,
+      "knn_accuracy": 0.7403,
+      "knn_precision": 0.6364,
+      "knn_recall": 0.6049,
+      "knn_f1": 0.6203,
+      "knn_auc": 0.8058
+    },
+    {
+      "split": 10,
+      "seed": 10,
+      "tree_accuracy": 0.7273,
+      "tree_precision": 0.5938,
+      "tree_recall": 0.7037,
+      "tree_f1": 0.6441,
+      "tree_auc": 0.824,
+      "knn_accuracy": 0.7186,
+      "knn_precision": 0.5976,
+      "knn_recall": 0.6049,
+      "knn_f1": 0.6012,
+      "knn_auc": 0.7705
+    }
+  ],
+  "ten_splits_summary": {
+    "tree": {
+      "accuracy": {
+        "mean": 0.7312,
+        "min": 0.6797,
+        "max": 0.7749,
+        "std": 0.0247
+      },
+      "precision": {
+        "mean": 0.635,
+        "min": 0.5327,
+        "max": 0.875,
+        "std": 0.092
+      },
+      "recall": {
+        "mean": 0.6309,
+        "min": 0.3457,
+        "max": 0.8395,
+        "std": 0.1534
+      },
+      "f1": {
+        "mean": 0.6136,
+        "min": 0.4956,
+        "max": 0.7234,
+        "std": 0.0676
+      },
+      "auc": {
+        "mean": 0.7914,
+        "min": 0.7194,
+        "max": 0.824,
+        "std": 0.0298
+      }
+    },
+    "knn": {
+      "accuracy": {
+        "mean": 0.7282,
+        "min": 0.671,
+        "max": 0.7576,
+        "std": 0.0244
+      },
+      "precision": {
+        "mean": 0.6252,
+        "min": 0.5263,
+        "max": 0.6923,
+        "std": 0.046
+      },
+      "recall": {
+        "mean": 0.579,
+        "min": 0.4815,
+        "max": 0.6173,
+        "std": 0.0401
+      },
+      "f1": {
+        "mean": 0.5991,
+        "min": 0.5532,
+        "max": 0.6234,
+        "std": 0.0235
+      },
+      "auc": {
+        "mean": 0.7794,
+        "min": 0.7465,
+        "max": 0.8058,
+        "std": 0.0203
+      }
+    }
+  },
+  "gini": {
+    "root_impurity_full": 0.4544,
+    "model_choice": {
+      "feature": "Glucose",
+      "threshold": 127.5,
+      "n_total": 768,
+      "left": {
+        "n": 485,
+        "pos": 94,
+        "neg": 391,
+        "gini": 0.3125
+      },
+      "right": {
+        "n": 283,
+        "pos": 174,
+        "neg": 109,
+        "gini": 0.4736
+      },
+      "weighted_gini": 0.3719
+    },
+    "alternative": {
+      "feature": "BMI",
+      "threshold": 30.0,
+      "n_total": 768,
+      "left": {
+        "n": 292,
+        "pos": 51,
+        "neg": 241,
+        "gini": 0.2883
+      },
+      "right": {
+        "n": 476,
+        "pos": 217,
+        "neg": 259,
+        "gini": 0.4961
+      },
+      "weighted_gini": 0.4171
+    }
+  }
+}
